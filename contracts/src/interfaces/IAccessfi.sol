@@ -16,10 +16,11 @@ interface IAccessFiPool {
         uint256 amountSpent;
         uint256 tokensGained;
         uint256 pricePerToken;
+        uint256 minRequiredTokens;
     }
 
     function buy(address seller) view external;
-    function sell(address buyer) view external;
+    function sell(address buyer) external;
     function enterPoolAsBuyer(uint256 _pricePerToken, uint256 _totalTokens) external;
     function exitPoolAsBuyer() external;
     function enterPoolAsSeller() external;
