@@ -64,9 +64,9 @@ export default function Navbar() {
 
   return (
     <motion.nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
-          ? 'bg-background/80 backdrop-blur-md border-b border-border/50'
-          : 'bg-transparent'
+      className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${isScrolled
+        ? 'bg-background/95 backdrop-blur-md border-b border-border/50'
+        : 'bg-background/10 backdrop-blur-sm'
         }`}
       variants={navVariants}
       initial="hidden"
@@ -256,7 +256,7 @@ export default function Navbar() {
           initial="closed"
           animate={isOpen ? "open" : "closed"}
         >
-          <div className="px-2 pt-2 pb-3 space-y-1 bg-background/95 backdrop-blur-md rounded-lg mt-2 border border-border/50">
+          <div className="px-2 pt-2 pb-3 space-y-1 bg-background/98 backdrop-blur-md rounded-lg mt-2 border border-border/50 shadow-lg">
             {navItems.map((item) => (
               <motion.a
                 key={item.name}
