@@ -7,6 +7,11 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Badge } from '~/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
+import { Input } from '~/components/ui/input';
+import { Label } from '~/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
+import { Checkbox } from '~/components/ui/checkbox';
 import { TrendingUp, Shield, Zap, Users, Plus, Sparkles, Wallet } from 'lucide-react';
 
 interface Pool {
@@ -140,6 +145,18 @@ export default function PoolsSection() {
   const { isConnected } = useAccount();
   const [activeFilter, setActiveFilter] = useState('all');
   const [sortBy, setSortBy] = useState('apy');
+  const [isBuyerModalOpen, setIsBuyerModalOpen] = useState(false);
+  const [buyerFormData, setBuyerFormData] = useState({
+    pricePerToken: '',
+    minTokens: ''
+  });
+  const [isCreatePoolModalOpen, setIsCreatePoolModalOpen] = useState(false);
+  const [createPoolFormData, setCreatePoolFormData] = useState({
+    poolName: '',
+    selectedProofs: [] as string[],
+    customProof: '',
+    useCustomProof: false
+  });
 
   const filteredPools = mockPools
     .filter(pool => activeFilter === 'all' || pool.category === activeFilter)
@@ -222,7 +239,7 @@ export default function PoolsSection() {
         viewport={{ once: true, amount: 0.1 }}
       >
         {/* Header */}
-        <motion.div className="text-center mb-12" variants={itemVariants}>
+        <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Active <span className="text-primary">Liquidity Pools</span>
           </h2>
@@ -231,20 +248,19 @@ export default function PoolsSection() {
           </p>
 
           {/* Create Pool Button */}
-          <motion.div
-            className="mt-8"
-            variants={itemVariants}
-          >
+          <div className="mt-8">
             {isConnected ? (
-              <motion.div
-                className="relative inline-block"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button
-                  size="lg"
-                  className="relative px-8 py-4 text-lg font-bold bg-gradient-to-r from-primary via-chart-2 to-chart-3 hover:from-primary/90 hover:via-chart-2/90 hover:to-chart-3/90 text-primary-foreground shadow-2xl overflow-hidden group"
-                >
+              <Dialog open={isCreatePoolModalOpen} onOpenChange={setIsCreatePoolModalOpen}>
+                <DialogTrigger asChild>
+                  <motion.div
+                    className="relative inline-block"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button
+                      size="lg"
+                      className="relative px-8 py-4 text-lg font-bold bg-gradient-to-r from-primary via-chart-2 to-chart-3 hover:from-primary/90 hover:via-chart-2/90 hover:to-chart-3/90 text-primary-foreground shadow-2xl overflow-hidden group"
+                    >
                   {/* Animated shine effect */}
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
@@ -298,7 +314,179 @@ export default function PoolsSection() {
                     ease: "easeInOut"
                   }}
                 />
-              </motion.div>
+                </motion.div>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[700px] backdrop-blur-md bg-white/90 border-0 shadow-2xl">
+                  <DialogHeader className="text-center pb-6">
+                    <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-chart-2 bg-clip-text text-transparent">
+                      Create New Pool
+                    </DialogTitle>
+                    <p className="text-muted-foreground mt-2">
+                      Set up your pool with the required proof verification
+                    </p>
+                  </DialogHeader>
+                  
+                  <div className="space-y-8">
+                    {/* Pool Name Section */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="poolName" className="text-sm font-medium text-foreground flex items-center gap-2">
+                          <Sparkles className="w-4 h-4" />
+                          Pool Name
+                        </Label>
+                        <Input
+                          id="poolName"
+                          placeholder="Enter a descriptive name for your pool"
+                          className="px-4 py-3 text-lg border-2 focus:border-primary transition-colors"
+                          value={createPoolFormData.poolName}
+                          onChange={(e) => setCreatePoolFormData({
+                            ...createPoolFormData,
+                            poolName: e.target.value
+                          })}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Proof Selection Section */}
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                          <Shield className="w-4 h-4" />
+                          Proof Verification Requirements
+                        </Label>
+                        
+                        {/* Custom Proof Toggle */}
+                        <div className="bg-muted/30 rounded-lg p-4">
+                          <div className="flex items-center space-x-3">
+                            <Checkbox
+                              id="useCustomProof"
+                              checked={createPoolFormData.useCustomProof}
+                              onCheckedChange={(checked) => setCreatePoolFormData({
+                                ...createPoolFormData,
+                                useCustomProof: checked as boolean
+                              })}
+                              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                            />
+                            <Label htmlFor="useCustomProof" className="text-sm font-medium cursor-pointer">
+                              Create custom proof requirement
+                            </Label>
+                          </div>
+                        </div>
+                        
+                        {/* Proof Options */}
+                        {!createPoolFormData.useCustomProof ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-medium">Select Available Proofs</Label>
+                              <span className="text-xs text-muted-foreground">
+                                {createPoolFormData.selectedProofs.length} selected
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto border-2 border-border/50 rounded-lg p-4 bg-background/50">
+                              {[
+                                { name: 'Proof of Identity', icon: '🆔' },
+                                { name: 'Proof of Age', icon: '🎂' },
+                                { name: 'Proof of Location', icon: '📍' },
+                                { name: 'Proof of Income', icon: '💰' },
+                                { name: 'Proof of Education', icon: '🎓' },
+                                { name: 'Proof of Employment', icon: '💼' }
+                              ].map((proof) => (
+                                <div key={proof.name} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
+                                  <Checkbox
+                                    id={proof.name}
+                                    checked={createPoolFormData.selectedProofs.includes(proof.name)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setCreatePoolFormData({
+                                          ...createPoolFormData,
+                                          selectedProofs: [...createPoolFormData.selectedProofs, proof.name]
+                                        });
+                                      } else {
+                                        setCreatePoolFormData({
+                                          ...createPoolFormData,
+                                          selectedProofs: createPoolFormData.selectedProofs.filter(p => p !== proof.name)
+                                        });
+                                      }
+                                    }}
+                                    className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                  />
+                                  <Label htmlFor={proof.name} className="text-sm cursor-pointer flex items-center gap-2">
+                                    <span>{proof.icon}</span>
+                                    {proof.name}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <Label className="text-sm font-medium">Custom Proof Description</Label>
+                            <div className="relative">
+                              <Input
+                                placeholder="Describe your custom proof requirement (e.g., Proof of NFT ownership, Proof of DAO membership)"
+                                value={createPoolFormData.customProof}
+                                onChange={(e) => setCreatePoolFormData({
+                                  ...createPoolFormData,
+                                  customProof: e.target.value
+                                })}
+                                className="px-4 py-3 text-lg border-2 focus:border-primary transition-colors"
+                              />
+                            </div>
+                            <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3">
+                              <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+                                <Zap className="w-4 h-4" />
+                                <span>Custom proofs allow for unique verification requirements</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Info Section */}
+                    <div className="bg-gradient-to-r from-primary/10 to-chart-2/10 rounded-lg p-4 border border-primary/20">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Sparkles className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="font-medium text-sm">Pool Creation Tips</h4>
+                          <p className="text-xs text-muted-foreground">
+                            Choose proof requirements that match your pool's purpose. More specific proofs help ensure quality participants.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end gap-3 pt-6 border-t border-border/50">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsCreatePoolModalOpen(false)}
+                      className="px-6 py-2"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        console.log('Creating pool:', createPoolFormData);
+                        setIsCreatePoolModalOpen(false);
+                        setCreatePoolFormData({
+                          poolName: '',
+                          selectedProofs: [],
+                          customProof: '',
+                          useCustomProof: false
+                        });
+                      }}
+                      className="px-6 py-2 bg-gradient-to-r from-primary to-chart-2 hover:from-primary/90 hover:to-chart-2/90"
+                      disabled={!createPoolFormData.poolName || (!createPoolFormData.useCustomProof && createPoolFormData.selectedProofs.length === 0) || (createPoolFormData.useCustomProof && !createPoolFormData.customProof)}
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Create Pool
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             ) : (
               <ConnectButton.Custom>
                 {({ openConnectModal }) => (
@@ -368,8 +556,8 @@ export default function PoolsSection() {
                 )}
               </ConnectButton.Custom>
             )}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Filters */}
         <motion.div
@@ -517,13 +705,105 @@ export default function PoolsSection() {
 
                       {/* Action Button */}
                       {isConnected ? (
-                        <Button
-                          className="w-full mt-4 group-hover:shadow-lg transition-all"
-                          size="sm"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Join Pool
-                        </Button>
+                        <div className='grid grid-cols-2 gap-2'>
+                          <Dialog open={isBuyerModalOpen} onOpenChange={setIsBuyerModalOpen}>
+                            <DialogTrigger asChild>
+                              <Button
+                                className="w-full mt-4 group-hover:shadow-lg transition-all"
+                                size="sm"
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Join As Buyer
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[500px] backdrop-blur-md bg-white/90 border-0 shadow-2xl">
+                              <DialogHeader className="text-center pb-6">
+                                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-chart-2 bg-clip-text text-transparent">
+                                  Join Pool as Buyer
+                                </DialogTitle>
+                                <p className="text-muted-foreground mt-2">
+                                  Enter your buying preferences to join the pool
+                                </p>
+                              </DialogHeader>
+                              
+                              <div className="space-y-6">
+                                <div className="space-y-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="pricePerToken" className="text-sm font-medium text-foreground">
+                                      Price per Token (USDC)
+                                    </Label>
+                                    <div className="relative">
+                                      <Input
+                                        id="pricePerToken"
+                                        type="number"
+                                        placeholder="0.00"
+                                        className="pl-8 pr-4 py-3 text-lg border-2 focus:border-primary transition-colors"
+                                        value={buyerFormData.pricePerToken}
+                                        onChange={(e) => setBuyerFormData({
+                                          ...buyerFormData,
+                                          pricePerToken: e.target.value
+                                        })}
+                                      />
+                                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <Label htmlFor="minTokens" className="text-sm font-medium text-foreground">
+                                      Minimum Tokens Required
+                                    </Label>
+                                    <Input
+                                      id="minTokens"
+                                      type="number"
+                                      placeholder="0"
+                                      className="px-4 py-3 text-lg border-2 focus:border-primary transition-colors"
+                                      value={buyerFormData.minTokens}
+                                      onChange={(e) => setBuyerFormData({
+                                        ...buyerFormData,
+                                        minTokens: e.target.value
+                                      })}
+                                    />
+                                  </div>
+                                </div>
+                                
+                                <div className="bg-muted/30 rounded-lg p-4">
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Shield className="w-4 h-4" />
+                                    <span>Your information is secure and encrypted</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex justify-end gap-3 pt-6 border-t border-border/50">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setIsBuyerModalOpen(false)}
+                                  className="px-6 py-2"
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    console.log('Joining as buyer:', buyerFormData);
+                                    setIsBuyerModalOpen(false);
+                                    setBuyerFormData({ pricePerToken: '', minTokens: '' });
+                                  }}
+                                  className="px-6 py-2 bg-gradient-to-r from-primary to-chart-2 hover:from-primary/90 hover:to-chart-2/90"
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Join Program
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          <Button
+                            className="w-full mt-4 group-hover:shadow-lg transition-all"
+                            size="sm"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Join As Seller
+                          </Button>
+                        </div>
                       ) : (
                         <ConnectButton.Custom>
                           {({ openConnectModal }) => (
