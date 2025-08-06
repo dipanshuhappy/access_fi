@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  httpbin:
+    image: kennethreitz/httpbin:latest
+    ports:
+      - "4000:80"
+  app:
+    image: dipanshuhappy/email_verifier_tee:3.0.3
+    container_name: app
+    volumes:
+      - /var/run/tappd.sock:/var/run/tappd.sock
+    environment:
+      - PORT=${PORT}
+      - RESEND_API=${RESEND_API}
+    ports:
+      - "4000:4000"
+    restart: always
