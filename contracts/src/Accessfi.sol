@@ -6,7 +6,6 @@ import {IAccessFiPool} from "./interfaces/IAccessfi.sol";
 
 contract AccessFiPool is IAccessFiPool {
 
-
     Seller[] public sellers;
     Buyer[] public buyers;
     address public verifications;
@@ -38,7 +37,7 @@ contract AccessFiPool is IAccessFiPool {
         require(isBuyer[buyer], "Buyer not in pool");
         require(!hasSold[msg.sender][buyer], "Seller has already sold to this buyer");
         hasSold[msg.sender][buyer] = true;
-        // Update structs
+
         uint256 sIdx = sellerIndex[msg.sender];
         uint256 bIdx = buyerIndex[buyer];
         if (sIdx > 0 && bIdx > 0) {
@@ -87,7 +86,7 @@ contract AccessFiPool is IAccessFiPool {
             TokensBurned: 0
         });
         sellers.push(newSeller);
-        sellerIndex[msg.sender] = sellers.length; // index+1
+        sellerIndex[msg.sender] = sellers.length;
         isSeller[msg.sender] = true;
     }
 
@@ -96,7 +95,7 @@ contract AccessFiPool is IAccessFiPool {
         uint256 idx = sellerIndex[msg.sender];
         require(idx > 0, "Seller not found");
         uint256 arrIdx = idx - 1;
-        // Remove from array
+
         if (arrIdx < sellers.length - 1) {
             sellers[arrIdx] = sellers[sellers.length - 1];
             sellerIndex[sellers[arrIdx].seller] = arrIdx + 1;
@@ -106,7 +105,22 @@ contract AccessFiPool is IAccessFiPool {
         isSeller[msg.sender] = false;
     }
 
-    function getSellers() public view returns (address[] memory) {
+    function getAvailableSellers() public view returns(address[] memory, uint256) {
+        require(isBuyer[msg.sender] == true, "this function is to know available sellers for individual buyers");
+        address[] memory availableSellers;
+        uint256 count = 0;
+        
+        for (uint i = 0; i < sellers.length; i++) {
+            if (!hasSold[sellers[i].seller][msg.sender]) {
+                availableSellers[count] = sellers[i].seller;
+                count++;
+            }
+        }
+        
+        return (availableSellers, count);
+    }
+
+    function getAllSellers() public view returns (address[] memory) {
         address[] memory sellerAddrs = new address[](sellers.length);
         for (uint i = 0; i < sellers.length; i++) {
             sellerAddrs[i] = sellers[i].seller;
@@ -114,7 +128,7 @@ contract AccessFiPool is IAccessFiPool {
         return sellerAddrs;
     }
 
-    function getBuyers() public view returns (address[] memory) {
+    function getAllBuyers() public view returns (address[] memory) {
         address[] memory buyerAddrs = new address[](buyers.length);
         for (uint i = 0; i < buyers.length; i++) {
             buyerAddrs[i] = buyers[i].buyer;

@@ -25,6 +25,6 @@ interface IAccessFiPool {
     function exitPoolAsBuyer() external;
     function enterPoolAsSeller() external;
     function exitPoolAsSeller() external;
-    function getSellers() external view returns (address[] memory);
-    function getBuyers() external view returns (address[] memory);
+    function getAllSellers() external view returns (address[] memory);
+    function getAllBuyers() external view returns (address[] memory);
 }
