@@ -36,7 +36,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geist.variable}`}>
-      <body className="overflow-x-hidden">
+      <body className="overflow-x-hidden pt-16">
         <Providers>
           <Navbar />
           {children}
