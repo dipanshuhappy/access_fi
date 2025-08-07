@@ -8,9 +8,14 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.18.1",
+    "@phala/dstack-sdk": "^0.5.3",
     "@t3-oss/env-core": "^0.13.8",
+    "@upstash/redis": "^1.35.3",
+    "dotenv": "^17.2.1",
     "hono": "^4.8.12",
+    "iocane": "^5.2.0",
     "resend": "^4.8.0",
+    "viem": "^2.33.2",
     "zod": "^4.0.15"
   },
   "devDependencies": {
