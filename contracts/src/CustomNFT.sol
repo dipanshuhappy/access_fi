@@ -66,20 +66,20 @@ contract CustomNFT is ICustomNFT, Ownable {
         return _exists(tokenId);
     }
     
-    function _mint(address to, uint256 tokenId, string memory tokenURI_) internal {
+    function _mint(address to, uint256 tokenId) internal {
         require(to != address(0), "Mint to zero address");
         require(!_exists(tokenId), "Token already exists");
         
         _balances[to]++;
         _owners[tokenId] = to;
-        _tokenURIs[tokenId] = tokenURI_;
+        // _tokenURIs[tokenId] = tokenURI_;
         
         emit Transfer(address(0), to, tokenId);
     }
     
     // Public mint function for authorized contracts
-    function mint(address to, uint256 tokenId, string memory tokenURI_) external override onlyMinter {
-        _mint(to, tokenId, tokenURI_);
+    function mint(address to, uint256 tokenId) external override onlyMinter {
+        _mint(to, tokenId);
     }
     
     // Transfer function that doesn't require approval
@@ -143,7 +143,7 @@ contract CustomNFT is ICustomNFT, Ownable {
         return _tokenIdCounter;
     }
     
-    function incrementTokenIdCounter() external onlyMinter {
-        _tokenIdCounter++;
-    }
+    // function incrementTokenIdCounter() external onlyMinter {
+    //     _tokenIdCounter++;
+    // }
 } 
