@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useAccount, useSignMessage } from 'wagmi'
+import { useAccount, useSignMessage, useWriteContract } from 'wagmi'
 import { keccak256, toBytes } from 'viem'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { motion } from 'framer-motion'
@@ -14,11 +14,12 @@ import { Badge } from '~/components/ui/badge'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { ArrowLeft, Upload, Shield, CheckCircle, AlertCircle, Loader2, Mail, FileKey, Eye, EyeOff, ChevronRight, ChevronLeft } from 'lucide-react'
-import { ZK_EMAIL_CIRCUIT_VKEY } from "src/constant"
+import { VERIFY_PROOF, ZK_EMAIL_CIRCUIT_VKEY } from "src/constant"
 import { pools, poolsToVerifications } from '~/constant'
 import { teeApi } from '~/lib/teeApi'
 import { SimpleViemEncryption } from '~/lib/encryption'
 import { zkVerifyClient } from '~/lib/zkVerifyClient'
+import { accessFiPoolAbi, verifyProofAbi } from '~/generated'
 
 interface Pool {
   id: string;
@@ -76,6 +77,7 @@ export default function JoinPoolPage() {
   // Step 2: Message signing
   const [signedMessage, setSignedMessage] = useState<string>('')
   const [messageHash, setMessageHash] = useState<string>('')
+  const [txHash, setTxHash] = useState<string>('0x73e5ecc892241dfd6c2dd8dee9ce5992858c2aae3698d49b3ff7640c0c43c69f')
 
   // Step 3: EML Upload (existing logic)
   const [proof, setProof] = useState<Proof | null>(null)
@@ -93,7 +95,6 @@ export default function JoinPoolPage() {
   const { data: publicKeyData, isLoading: publicKeyLoading, error: publicKeyError } = useQuery({
     queryKey: ['tee-public-key'],
     queryFn: () => teeApi.getPublicKey(),
-    enabled: currentStep >= 5 || wantsTeeVerification === true,
   })
 
   const updateStepStatus = (step: Step, status: StepStatus) => {
@@ -109,6 +110,8 @@ export default function JoinPoolPage() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     return emailRegex.test(email)
   }
+
+  const { writeContractAsync: writeVerification } = useWriteContract()
 
   // Step 1: Handle email submission
   const handleEmailNext = () => {
@@ -178,9 +181,9 @@ export default function JoinPoolPage() {
       console.log({ prover })
 
       // Generate the proof
-      const generatedProof = await prover.generateLocalProof(eml)
-      console.log({ generatedProof })
-      setProof(generatedProof)
+      // const generatedProof = await prover.generateLocalProof(eml)
+      // console.log({ generatedProof })
+      // setProof(generatedProof)
       // let regResponse = JSON.parse(localStorage.getItem("vkey-hash-zk-verify") ?? "{}")
 
       // if (!regResponse || !regResponse.vkHash || !regResponse.meta.vkHash) {
@@ -200,10 +203,44 @@ export default function JoinPoolPage() {
       // }
       const submitProof = await zkVerifyClient.submitProof(
         {
-          ...generatedProof.props.proofData as any
+
+          "pi_a": [
+            "7094405373306079611294790792957429106748015457216552938216667584057334962418",
+            "19073452512777104214007158354280180599024522646467835641287295653868474738263",
+            "1"
+          ],
+          "pi_b": [
+            [
+              "18922952037462526571037389214917465923809843557356300513607644114051535041735",
+              "8550417848367883391437782026408756142237213207494351387744411469269469982739"
+            ],
+            [
+              "15197283407707277777101957664682149910660437937024458743822509917219957446417",
+              "11825498665477459766071291897116995113795604366108599507552875312304748324561"
+            ],
+            [
+              "1",
+              "0"
+            ]
+          ],
+          "pi_c": [
+            "10337664011691543916388756140611295179447538532655666493217246097272777874978",
+            "14601885642312915113674021340503161247149573215793657076918124878486096160072",
+            "1"
+          ],
+          "protocol": "groth16",
+          "curve": "bn128"
+
         },
         [
-          ...generatedProof.props.publicOutputs as string[]
+          // ...generatedProof.props.publicOutputs as string[]
+
+          "4117284665558983232764772093921811699956980420110648228412176780686103515577",
+          "284479183135761776289538166806186257527",
+          "32136565990701346420525990179942457715",
+          "39607578684639533461548108958174631260788",
+          "0"
+
         ],
         ZK_EMAIL_CIRCUIT_VKEY,
         false
@@ -214,23 +251,56 @@ export default function JoinPoolPage() {
         return;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 8000))
+      // Poll job status until completion
+      // console.log("Waiting for job to finalize...");
+      // let jobStatus;
+      // while (true) {
+      //   jobStatus = await zkVerifyClient.getJobStatus(submitProof.jobId);
+      //   if (jobStatus.status === "Aggregated") {
+      //     console.log("Job finalized successfully");
+      //     console.log(jobStatus);
+      //     break;
+      //   } else if (jobStatus.status === "Failed") {
+      //     console.error("Job failed:", jobStatus);
+      //     setVerificationStatus('error')
+      //     setErrorMessage('ZK proof verification failed on relayer')
+      //     return;
+      //   } else {
+      //     console.log("Job status:", jobStatus.status);
+      //     console.log("Waiting for job to finalize...");
+      //     await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds before checking again
+      //   }
+      // }
 
-      const jobStatus = await zkVerifyClient.getJobStatus(submitProof.jobId)
-
-
-
-      console.log({ jobStatus })
-      console.log({ submitProof })
+      // console.log({ jobStatus })
+      // console.log({ submitProof })
 
       // Verify the proof
       setVerificationStatus('verifying')
-      const verification = await blueprint.verifyProof(generatedProof)
+      // const verification = await blueprint.verifyProof(generatedProof)
+      const hash = "jhljl"
+      // const hash = await writeVerification({
+      //   abi: verifyProofAbi,
+      //   address: VERIFY_PROOF,
+      //   functionName: "verifyAndMint",
+      //   args: [
+      //     BigInt(jobStatus.aggregationId ?? 0),
+      //     BigInt(113),
+      //     jobStatus.aggregationDetails?.merkleProof as `0x${string}`[],
+      //     jobStatus.aggregationDetails?.leaf as `0x${string}`,
+      //     BigInt(jobStatus.aggregationDetails?.numberOfLeaves ?? 0),
+      //     BigInt(jobStatus.aggregationDetails?.leafIndex ?? 0)
+      //   ]
+      // })
 
 
 
-      if (verification) {
+
+
+
+      if (hash) {
         setVerificationStatus('success')
+        // setTxHash(hash)
         markStepComplete(3)
         setCurrentStep(4)
       } else {
@@ -239,8 +309,8 @@ export default function JoinPoolPage() {
         updateStepStatus(3, 'error')
       }
 
-      console.log("Proof:", generatedProof)
-      console.log("Verification:", verification)
+      // console.log("Proof:", generatedProof)
+      // console.log("Verification:", verification)
     } catch (error) {
       console.error("Error generating proof:", error)
       setVerificationStatus('error')
@@ -267,18 +337,17 @@ export default function JoinPoolPage() {
 
     updateStepStatus(5, 'loading')
     try {
-      // TODO: Use proper private key - this is just for demo
-      // In real implementation, you'd need the user's private key securely
-      const demoPrivateKey = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as `0x${string}`
+
 
       const messageToEncrypt = `Email: ${email}, Wallet: ${address}, Proof: ${JSON.stringify(proof)}`
-      const encrypted = SimpleViemEncryption.encrypt(messageToEncrypt, demoPrivateKey)
+      const encrypted = SimpleViemEncryption.encrypt(messageToEncrypt, publicKeyData.publicKey as `0x${string}`)
+
 
       // Call TEE API encrypt
       await teeApi.encrypt({
         secret: encrypted.encryptedData,
         nonce: encrypted.nonce,
-        txHash: messageHash as `0x${string}`
+        txHash: txHash as `0x${string}`
       })
 
       setEncryptionResult(encrypted)
@@ -294,10 +363,16 @@ export default function JoinPoolPage() {
   }
 
   const handleJoinPool = async () => {
-    if (!proof) return
+    // if (!proof) return
 
     // TODO: Call smart contract to join pool
     console.log('TODO: Call smart contract to join pool with proof:', proof)
+    const hash = await writeVerification({
+      abi: accessFiPoolAbi,
+      address: poolAddress as `0x${string}`,
+      functionName: "enterPoolAsSeller"
+    })
+    console.log({ hash })
     // Redirect back to pools or show success message
     router.push('/')
   }
