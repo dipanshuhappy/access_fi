@@ -7,6 +7,7 @@ libs = ["lib"]
 [rpc_endpoints]
 base_sepolia = "https://base-sepolia.drpc.org"
 sepolia = "https://rpc.sepolia.org"
+horizen_testnet = "https://horizen-rpc-testnet.appchain.base.org"
 
 # Etherscan configuration for contract verification
 [etherscan]
