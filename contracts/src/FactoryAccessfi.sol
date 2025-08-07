@@ -11,8 +11,8 @@ contract FactoryAccessfi {
     address[] public pools;
 
 
-    function createPool(address verifications) public  returns (IAccessFiPool) {
-        AccessFiPool accessfiPool = new AccessFiPool(verifications);
+    function createPool(address verifications, address _nftaddress) public  returns (IAccessFiPool) {
+        AccessFiPool accessfiPool = new AccessFiPool(verifications, _nftaddress);
         pools.push(address(accessfiPool));
         return IAccessFiPool(address(accessfiPool));
     }

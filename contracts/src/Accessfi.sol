@@ -223,6 +223,7 @@ contract AccessFiPool is IAccessFiPool {
         sellers.push(newSeller);
         sellerIndex[msg.sender] = sellers.length;
         isSeller[msg.sender] = true;
+        totalSellers++;
     }
 
     function exitPoolAsSeller() public {
@@ -238,11 +239,12 @@ contract AccessFiPool is IAccessFiPool {
         sellers.pop();
         sellerIndex[msg.sender] = 0;
         isSeller[msg.sender] = false;
+        totalSellers--;
     }
 
     function getAvailableSellers() public view returns(address[] memory, uint256) {
         require(isBuyer[msg.sender] == true, "this function is to know available sellers for individual buyers");
-        address[] memory availableSellers;
+        address[] memory availableSellers = new address[](sellers.length);
         uint256 count = 0;
         
         for (uint i = 0; i < sellers.length; i++) {
