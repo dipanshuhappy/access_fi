@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { config } from '~/lib/wagmi';
 import { TRPCReactProvider } from "~/trpc/react";
+import { Toaster } from "~/components/ui/sonner";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ export default function Providers({ children }: ProvidersProps) {
         <RainbowKitProvider>
           <TRPCReactProvider>
             {children}
+            <Toaster />
           </TRPCReactProvider>
         </RainbowKitProvider>
       </QueryClientProvider>

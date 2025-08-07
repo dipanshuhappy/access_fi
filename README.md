@@ -1,29 +1,120 @@
-# Create T3 App
+# AccessFi 🚀
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+DeFi liquidity pools with ZK email verification. Three parts: frontend, contracts, and TEE service.
 
-## What's next? How do I make an app with this?
+## Quick Setup
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+```bash
+git clone <repo>
+cd access_fi
+```
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## 📱 Frontend
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+Next.js app for creating and joining pools.
 
-## Learn More
+### Setup
+```bash
+bun install
+```
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+### Environment (.env.local)
+```env
+DATABASE_URL="postgresql://user:pass@localhost:5432/accessfi"
+NEXT_PUBLIC_WC_PROJECT_ID="your_walletconnect_id"
+```
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+### Run
+```bash
+bun dev  # http://localhost:3001
+```
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+## 🔗 Smart Contracts
 
-## How do I deploy this?
+Foundry contracts for pool management.
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+### Setup
+```bash
+cd contracts
+forge install
+```
+
+### Environment (.env)
+```env
+ZK_VERIFY_ADDRESS=0xPK82591733B8042f24C851e47a9E333c3Pna618F
+VERIFICATION_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+NFT_NAME="AccessFi NFT"
+NFT_SYMBOL="AFNFT"
+PRIVATE_KEY=0xpo0974bec90a17e36ba4a6b4d238kk944bacb478clmn5efcae784d7bp9g2ff80
+```
+
+### Deploy
+```bash
+forge build
+forge script script/Deploy.s.sol --rpc-url https://base-sepolia.drpc.org --private-key $PRIVATE_KEY --broadcast
+```
+
+## 🛡️ TEE Service
+
+Email verification service.
+
+### Setup
+```bash
+cd email_verifier_tee
+npm install
+```
+
+### Environment (.env)
+```env
+TEE_ENDPOINT=https://your-tee-endpoint.com
+PRIVATE_KEY=0xpo0974bec90a17e36ba4a6b4d238kk944bacb478clmn5efcae784d7bp9g2ff80
+RESEND_API_KEY=re_123456789
+REDIS_URL=redis://localhost:6379
+PORT=4000
+```
+
+### Run
+```bash
+npm run dev  # http://localhost:4000
+```
+
+## Development Workflow
+
+```bash
+# Terminal 1 - TEE Service
+cd email_verifier_tee && npm run dev
+
+# Terminal 2 - Frontend  
+bun dev
+
+# Terminal 3 - Local blockchain (optional)
+cd contracts && anvil
+```
+
+## Production
+
+### Frontend
+```bash
+bun build && bun start
+```
+
+### Contracts
+```bash
+cd contracts
+forge script script/Deploy.s.sol --rpc-url $MAINNET_RPC --private-key $PRIVATE_KEY --broadcast
+```
+
+### TEE Service
+```bash
+cd email_verifier_tee
+npm run build && npm start
+```
+
+## Common Issues
+
+- **Wallet not connecting?** Check MetaMask is unlocked
+- **Contract deploy fails?** Check you have ETH for gas
+- **TEE service won't start?** Check Redis is running
+- **Pool creation fails?** Update contract addresses in `src/constant.ts`
+
+That's it! 🎉

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAccount, useContractRead, useReadContract, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -20,27 +20,16 @@ import { zeroAddress, erc721Abi, formatEther, parseEther } from "viem"
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { config } from '~/lib/wagmi';
 
-interface Pool {
-  id: string;
-  title: string;
-  usdcAmount: number;
-  minAccessTokens: number;
-  totalVolume: number;
-  risk: 'low' | 'medium' | 'high';
-  category: string;
-  tags: string[];
-  isActive: boolean;
-}
+// Pool interface now imported from poolStorage
+import { Pool, getStoredPoolsData, getPoolDataByIndex, createPoolFromData, debugPoolStorage } from '~/lib/poolStorage';
 
-import { pools } from '~/constant';
+// import { pools } from '~/constant';
 import { teeApi } from '~/lib/teeApi';
 import { SimpleViemEncryption } from '~/lib/encryption';
 import { parseAbi } from 'viem/utils';
 import wagmiConfig from 'wagmi.config';
 
-const filterCategories = [
-  { id: 'all', label: 'All Pools', count: 2 }
-];
+// filterCategories will be defined inside the component
 
 const riskColors = {
   low: 'bg-green-500/10 text-green-600 border-green-500/20',
@@ -65,8 +54,48 @@ export default function PoolsSection() {
 
   const { writeContractAsync } = useWriteContract()
 
-  const filteredPools = pools
+  // Fetch all pools from the factory contract
+  const { data: poolAddresses, isLoading: isLoadingPools, refetch: refetchPools } = useReadContract({
+    address: FACTORY_ACCESSFI_ADDRESS,
+    abi: factoryAccessfiAbi,
+    functionName: 'getAllPools',
+  });
 
+  console.log('🏊‍♂️ Pool addresses from contract:', poolAddresses);
+  
+  // Debug pool storage on component mount
+  useEffect(() => {
+    debugPoolStorage();
+  }, []);
+  
+  // Auto-refresh pools when user navigates back from create page
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 Refreshing pools on page focus...');
+      debugPoolStorage();
+      refetchPools();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [refetchPools]);
+
+  // Create a dynamic pool list from contract data and stored pool information
+  const pools: Pool[] = poolAddresses
+    ? poolAddresses.map((address, index) => {
+        const storedData = getPoolDataByIndex(index);
+        console.log(`🏊‍♂️ Pool ${index + 1} data:`, { address, storedData });
+        return createPoolFromData(address, index, storedData);
+      })
+    : [];
+
+  console.log('📊 All pools with stored data:', pools);
+
+  const filterCategories = [
+    { id: 'all', label: 'All Pools', count: pools?.length || 0 }
+  ];
+
+  const filteredPools = pools
     .filter(pool => activeFilter === 'all' || pool.category === activeFilter)
     .sort((a, b) => {
       switch (sortBy) {
@@ -381,7 +410,59 @@ export default function PoolsSection() {
           variants={containerVariants}
         >
           <AnimatePresence mode="popLayout">
-            {filteredPools.map((pool) => {
+            {isLoadingPools ? (
+              // Loading skeleton
+              Array.from({ length: 3 }).map((_, index) => (
+                <motion.div
+                  key={`loading-${index}`}
+                  variants={cardVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="group"
+                >
+                  <Card className="h-full border-border/50 bg-card/50 backdrop-blur-sm animate-pulse">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="h-6 bg-muted rounded w-32"></div>
+                        <div className="w-8 h-8 bg-muted rounded-full"></div>
+                      </div>
+                      <div className="flex gap-1 mt-2">
+                        <div className="h-5 bg-muted rounded w-16"></div>
+                        <div className="h-5 bg-muted rounded w-20"></div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <div className="h-4 bg-muted rounded w-20"></div>
+                          <div className="h-4 bg-muted rounded w-16"></div>
+                        </div>
+                        <div className="flex justify-between">
+                          <div className="h-4 bg-muted rounded w-24"></div>
+                          <div className="h-4 bg-muted rounded w-20"></div>
+                        </div>
+                      </div>
+                      <div className="h-8 bg-muted rounded w-full mt-4"></div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))
+            ) : filteredPools.length === 0 ? (
+              // No pools state
+              <motion.div
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
+                className="col-span-full text-center py-12"
+              >
+                <div className="text-muted-foreground">
+                  <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-semibold mb-2">No pools found</h3>
+                  <p>Be the first to create a liquidity pool!</p>
+                </div>
+              </motion.div>
+            ) : (
+              filteredPools.map((pool) => {
               const RiskIcon = getRiskIcon(pool.risk);
 
               return (
@@ -439,13 +520,33 @@ export default function PoolsSection() {
                           </span>
                         </div>
 
-                        {/* APY removed */}
+                        {/* APY from stored data */}
+                        {pool.apy && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Target APY</span>
+                            <span className="font-medium text-green-600">
+                              {pool.apy}%
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Duration from stored data */}
+                        {pool.duration && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Duration</span>
+                            <span className="font-medium">
+                              {pool.duration} days
+                            </span>
+                          </div>
+                        )}
                       </div>
                       {/* Stats */}
                       <div className="flex justify-between items-center pt-2 border-t border-border/50">
                         <div />
                         <div className="text-sm text-muted-foreground">
-                          {/* Ends in {pool.timeLeft} */}
+                          {pool.createdAt && (
+                            `Created ${new Date(pool.createdAt).toLocaleDateString()}`
+                          )}
                         </div>
                       </div>
 
@@ -477,7 +578,7 @@ export default function PoolsSection() {
                   </Card>
                 </motion.div>
               );
-            })}
+            }))}
           </AnimatePresence>
         </motion.div>
 
