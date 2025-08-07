@@ -44,6 +44,7 @@ export interface RegisterVkResponse {
 
 export interface SubmitProofRequest {
   proofType: 'groth16';
+  chainId: number;
   vkRegistered: boolean;
   proofOptions: ProofOptions;
   proofData: {
@@ -59,15 +60,31 @@ export interface SubmitProofResponse {
   [key: string]: any;
 }
 
-export type JobStatus = 'Pending' | 'Processing' | 'Finalized' | 'Failed';
+export type JobStatus = 'Pending' | 'Processing' | 'Finalized' | 'Failed' | 'Aggregated';
+
+export interface AggregationDetails {
+  receipt: string;
+  receiptBlockHash: string;
+  root: string;
+  leaf: string;
+  leafIndex: number;
+  numberOfLeaves: number;
+  merkleProof: string[];
+}
 
 export interface JobStatusResponse {
-  status: JobStatus;
   jobId: string;
-  createdAt?: string;
-  updatedAt?: string;
-  result?: any;
-  error?: string;
+  status: JobStatus;
+  statusId: number;
+  proofType: 'groth16';
+  chainId: number;
+  createdAt: string;
+  updatedAt: string;
+  txHash?: string;
+  blockHash?: string;
+  aggregationId?: number;
+  statement?: string;
+  aggregationDetails?: AggregationDetails;
   [key: string]: any;
 }
 
@@ -168,6 +185,7 @@ export class ZkVerifyClient {
   ): Promise<SubmitProofResponse> {
     const request: SubmitProofRequest = {
       proofType: 'groth16',
+      "chainId": 845320009,
       vkRegistered,
       proofOptions: {
         library: 'snarkjs',

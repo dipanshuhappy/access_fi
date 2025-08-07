@@ -33,7 +33,8 @@ export interface DecryptRequest {
 }
 
 export interface DecryptResponse {
-  encryptedEmail: string;
+  encryptedData: string,
+  nonce: string;
 }
 
 export interface SendVerificationEmailRequest {

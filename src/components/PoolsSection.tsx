@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAccount, useContractRead, useReadContract, useReadContracts, useWriteContract } from 'wagmi';
+import { useAccount, useContractRead, useReadContract, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Badge } from '~/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
@@ -14,9 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { Checkbox } from '~/components/ui/checkbox';
 import { TrendingUp, Shield, Zap, Users, Plus, Sparkles, Wallet } from 'lucide-react';
-import { factoryAccessfiAbi, verifyProofAbi } from '~/generated';
+import { accessFiPoolAbi, factoryAccessfiAbi, verifyProofAbi } from '~/generated';
 import { EMAIL_NFT, FACTORY_ACCESSFI_ADDRESS, VERIFY_PROOF } from '~/constant';
-import { zeroAddress } from "viem"
+import { zeroAddress, erc721Abi, formatEther, parseEther } from "viem"
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { config } from '~/lib/wagmi';
 
 interface Pool {
@@ -32,6 +33,10 @@ interface Pool {
 }
 
 import { pools } from '~/constant';
+import { teeApi } from '~/lib/teeApi';
+import { SimpleViemEncryption } from '~/lib/encryption';
+import { parseAbi } from 'viem/utils';
+import wagmiConfig from 'wagmi.config';
 
 const filterCategories = [
   { id: 'all', label: 'All Pools', count: 2 }
@@ -140,15 +145,44 @@ export default function PoolsSection() {
         viewport={{ once: true, amount: 0.1 }}
       >
         <Button onClick={async () => {
-          await writeContractAsync({
-            abi: factoryAccessfiAbi,
-            address: FACTORY_ACCESSFI_ADDRESS,
-            functionName: 'createPool',
-            args: [
-              zeroAddress,
-              VERIFY_PROOF
-            ]
+          // const joinBuyHash = await writeContractAsync({
+          //   abi: accessFiPoolAbi,
+          //   address: "0x1c1d7bf51891cBe857551795B65af53F80D91E2B",
+          //   functionName: "enterPoolAsBuyer",
+          //   args: [parseEther('0.00001'), parseEther('0.00001')]
+          // })
+
+          // const hash = await writeContractAsync({
+          //   abi: accessFiPoolAbi,
+          //   address: "0x1c1d7bf51891cBe857551795B65af53F80D91E2B",
+          //   functionName: 'buyFromSeller',
+          //   args: [
+          //     "0x8b5E4bA136D3a483aC9988C20CBF0018cC687E6f"
+          //   ],
+          //   value: parseEther('0.00001')
+          // })
+          // console.log({ hash })
+
+
+          // const burnTransaction = await writeContractAsync({
+          //   abi: parseAbi(['function transfer(address to, uint256 tokenId)']),
+          //   address: "0x5C45AE4ff1176aAed13822A743619F2CA82f3041",
+          //   functionName: 'transfer',
+          //   args: [
+          //     zeroAddress,
+          //     BigInt("72665380454419391581355400232069437159262014028121481654220799702730424182663")
+
+          //   ]
+          // })
+
+          const tempPrivateKey = generatePrivateKey()
+          const tempPublicKey = privateKeyToAccount(tempPrivateKey)
+
+          const a = await teeApi.decrypt({
+            publicKey: tempPublicKey.address,
+            txHash: ""
           })
+          console.log(SimpleViemEncryption.decrypt(a.encryptedData, a.nonce, tempPrivateKey), "EMAILS")
         }}>Hiiiii </Button>
         {/* Header */}
         <div className="text-center mb-12">
