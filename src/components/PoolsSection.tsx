@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAccount } from 'wagmi';
+import { useAccount, useContractRead, useReadContract, useReadContracts, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Badge } from '~/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
@@ -14,117 +14,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
 import { Checkbox } from '~/components/ui/checkbox';
 import { TrendingUp, Shield, Zap, Users, Plus, Sparkles, Wallet } from 'lucide-react';
+import { factoryAccessfiAbi, verifyProofAbi } from '~/generated';
+import { EMAIL_NFT, FACTORY_ACCESSFI_ADDRESS, VERIFY_PROOF } from '~/constant';
+import { zeroAddress } from "viem"
+import { config } from '~/lib/wagmi';
 
 interface Pool {
   id: string;
   title: string;
   usdcAmount: number;
   minAccessTokens: number;
-  apy: number;
-  totalStaked: number;
-  participants: number;
+  totalVolume: number;
   risk: 'low' | 'medium' | 'high';
   category: string;
   tags: string[];
   isActive: boolean;
-  timeLeft: string;
 }
 
-const mockPools: Pool[] = [
-  {
-    id: '1',
-    title: 'DeFi Yield Optimizer',
-    usdcAmount: 125000,
-    minAccessTokens: 1000,
-    apy: 24.5,
-    totalStaked: 2400000,
-    participants: 156,
-    risk: 'medium',
-    category: 'yield',
-    tags: ['High APY', 'Auto-compound', 'Verified'],
-    isActive: true,
-    timeLeft: '5d 12h'
-  },
-  {
-    id: '2',
-    title: 'Stable Liquidity Pool',
-    usdcAmount: 89500,
-    minAccessTokens: 500,
-    apy: 12.8,
-    totalStaked: 1800000,
-    participants: 234,
-    risk: 'low',
-    category: 'stable',
-    tags: ['Low Risk', 'Stable', 'Beginner Friendly'],
-    isActive: true,
-    timeLeft: '12d 6h'
-  },
-  {
-    id: '3',
-    title: 'Growth Strategy Fund',
-    usdcAmount: 67800,
-    minAccessTokens: 2000,
-    apy: 31.2,
-    totalStaked: 950000,
-    participants: 89,
-    risk: 'high',
-    category: 'growth',
-    tags: ['High Growth', 'Advanced', 'Limited Spots'],
-    isActive: true,
-    timeLeft: '2d 18h'
-  },
-  {
-    id: '4',
-    title: 'NFT Backing Pool',
-    usdcAmount: 156000,
-    minAccessTokens: 750,
-    apy: 18.7,
-    totalStaked: 3200000,
-    participants: 312,
-    risk: 'medium',
-    category: 'nft',
-    tags: ['NFT Rewards', 'Trending', 'Community'],
-    isActive: true,
-    timeLeft: '8d 3h'
-  },
-  {
-    id: '5',
-    title: 'AI Trading Bot Pool',
-    usdcAmount: 234000,
-    minAccessTokens: 1500,
-    apy: 28.9,
-    totalStaked: 1600000,
-    participants: 67,
-    risk: 'high',
-    category: 'ai',
-    tags: ['AI Powered', 'Beta', 'Exclusive'],
-    isActive: true,
-    timeLeft: '15d 9h'
-  },
-  {
-    id: '6',
-    title: 'Cross-Chain Arbitrage',
-    usdcAmount: 98700,
-    minAccessTokens: 1200,
-    apy: 22.1,
-    totalStaked: 2100000,
-    participants: 178,
-    risk: 'medium',
-    category: 'arbitrage',
-    tags: ['Cross-Chain', 'Arbitrage', 'Multi-DEX'],
-    isActive: true,
-    timeLeft: '6d 14h'
-  }
-];
+import { pools } from '~/constant';
 
 const filterCategories = [
-  { id: 'all', label: 'All Pools', count: mockPools.length },
-  { id: 'yield', label: 'Yield Farming', count: 1 },
-  { id: 'stable', label: 'Stable Pools', count: 1 },
-  { id: 'growth', label: 'Growth Funds', count: 1 },
-  { id: 'nft', label: 'NFT Pools', count: 1 },
-  { id: 'ai', label: 'AI Strategies', count: 1 },
-  { id: 'arbitrage', label: 'Arbitrage', count: 1 }
+  { id: 'all', label: 'All Pools', count: 2 }
 ];
 
 const riskColors = {
@@ -146,27 +56,16 @@ export default function PoolsSection() {
   const { isConnected } = useAccount();
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('apy');
-  const [isBuyerModalOpen, setIsBuyerModalOpen] = useState(false);
-  const [buyerFormData, setBuyerFormData] = useState({
-    pricePerToken: '',
-    minTokens: ''
-  });
-  const [isCreatePoolModalOpen, setIsCreatePoolModalOpen] = useState(false);
-  const [createPoolFormData, setCreatePoolFormData] = useState({
-    poolName: '',
-    selectedProofs: [] as string[],
-    customProof: '',
-    useCustomProof: false
-  });
+  const [sortBy, setSortBy] = useState('tvl');
 
-  const filteredPools = mockPools
+  const { writeContractAsync } = useWriteContract()
+
+  const filteredPools = pools
+
     .filter(pool => activeFilter === 'all' || pool.category === activeFilter)
     .sort((a, b) => {
       switch (sortBy) {
-        case 'apy': return b.apy - a.apy;
-        case 'tvl': return b.totalStaked - a.totalStaked;
-        case 'participants': return b.participants - a.participants;
+        case 'tvl': return b.totalVolume - a.totalVolume;
         default: return 0;
       }
     });
@@ -240,13 +139,24 @@ export default function PoolsSection() {
         whileInView="visible"
         viewport={{ once: true, amount: 0.1 }}
       >
+        <Button onClick={async () => {
+          await writeContractAsync({
+            abi: factoryAccessfiAbi,
+            address: FACTORY_ACCESSFI_ADDRESS,
+            functionName: 'createPool',
+            args: [
+              zeroAddress,
+              VERIFY_PROOF
+            ]
+          })
+        }}>Hiiiii </Button>
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Active <span className="text-primary">Liquidity Pools</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Discover high-yield opportunities across different risk profiles and strategies
+            Discover high-yield opportunities and earn passive income with just shilling yourself.
           </p>
 
           {/* Create Pool Button */}
@@ -416,9 +326,7 @@ export default function PoolsSection() {
         >
           <span className="text-sm text-muted-foreground self-center mr-2">Sort by:</span>
           {[
-            { id: 'apy', label: 'APY' },
-            { id: 'tvl', label: 'TVL' },
-            { id: 'participants', label: 'Participants' }
+            { id: 'tvl', label: 'TVL' }
           ].map((option) => (
             <button
               key={option.id}
@@ -497,45 +405,20 @@ export default function PoolsSection() {
                           </span>
                         </div>
 
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">APY</span>
-                          <span className="font-bold text-xl text-primary">
-                            {pool.apy}%
-                          </span>
-                        </div>
+                        {/* APY removed */}
                       </div>
-
-                      {/* Progress Bar */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Total Staked</span>
-                          <span>{formatCurrency(pool.totalStaked)}</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <motion.div
-                            className="bg-gradient-to-r from-primary to-chart-2 h-2 rounded-full"
-                            initial={{ width: 0 }}
-                            whileInView={{ width: `${Math.min((pool.totalStaked / 3000000) * 100, 100)}%` }}
-                            transition={{ duration: 1, delay: 0.2 }}
-                          />
-                        </div>
-                      </div>
-
                       {/* Stats */}
                       <div className="flex justify-between items-center pt-2 border-t border-border/50">
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Users className="w-4 h-4" />
-                          <span>{pool.participants}</span>
-                        </div>
+                        <div />
                         <div className="text-sm text-muted-foreground">
-                          Ends in {pool.timeLeft}
+                          {/* Ends in {pool.timeLeft} */}
                         </div>
                       </div>
 
                       {/* Action Button */}
                       {isConnected ? (
                         <Button
-                          onClick={() => router.push(`/pools/${pool.id}/join`)}
+                          onClick={() => router.push(`/pools/${pool.address}/join`)}
                           className="w-full mt-4 group-hover:shadow-lg transition-all"
                           size="sm"
                         >
@@ -574,7 +457,7 @@ export default function PoolsSection() {
             size="lg"
             className="px-8 py-3"
           >
-            Load More Pools
+            More pools coming soon!
           </Button>
         </motion.div>
       </motion.div>

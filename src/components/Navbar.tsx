@@ -6,10 +6,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Menu, X } from 'lucide-react';
 
 const navItems = [
-  { name: 'Pools', href: '#pools' },
-  { name: 'Swap', href: '#swap' },
-  { name: 'Analytics', href: '#analytics' },
-  { name: 'Docs', href: '#docs' },
+  { name: 'Pools', href: '/' }
 ];
 
 export default function Navbar() {
