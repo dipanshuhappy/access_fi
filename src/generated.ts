@@ -300,13 +300,6 @@ export const customNftAbi = [
   },
   {
     type: 'function',
-    inputs: [],
-    name: 'incrementTokenIdCounter',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
     inputs: [
       { name: 'owner', internalType: 'address', type: 'address' },
       { name: 'operator', internalType: 'address', type: 'address' },
@@ -320,7 +313,6 @@ export const customNftAbi = [
     inputs: [
       { name: 'to', internalType: 'address', type: 'address' },
       { name: 'tokenId', internalType: 'uint256', type: 'uint256' },
-      { name: 'tokenURI_', internalType: 'string', type: 'string' },
     ],
     name: 'mint',
     outputs: [],
@@ -706,7 +698,6 @@ export const iCustomNftAbi = [
     inputs: [
       { name: 'to', internalType: 'address', type: 'address' },
       { name: 'tokenId', internalType: 'uint256', type: 'uint256' },
-      { name: 'tokenURI', internalType: 'string', type: 'string' },
     ],
     name: 'mint',
     outputs: [],
@@ -1259,6 +1250,13 @@ export const verifyProofAbi = [
   },
   {
     type: 'function',
+    inputs: [],
+    name: 'counter',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     inputs: [{ name: 'tokenId', internalType: 'uint256', type: 'uint256' }],
     name: 'exists',
     outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
@@ -1269,6 +1267,13 @@ export const verifyProofAbi = [
     inputs: [{ name: 'tokenId', internalType: 'uint256', type: 'uint256' }],
     name: 'getApproved',
     outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'getCounter',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'view',
   },
   {
@@ -1294,6 +1299,13 @@ export const verifyProofAbi = [
     name: 'isApprovedForAll',
     outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
     stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '_seller', internalType: 'address', type: 'address' }],
+    name: 'mintForPool',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
@@ -1324,6 +1336,13 @@ export const verifyProofAbi = [
     name: 'renounceOwnership',
     outputs: [],
     stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '', internalType: 'address', type: 'address' }],
+    name: 'sellerTokenId',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -1439,12 +1458,6 @@ export const verifyProofAbi = [
         type: 'uint256',
         indexed: false,
       },
-      {
-        name: 'tokenURI',
-        internalType: 'string',
-        type: 'string',
-        indexed: false,
-      },
     ],
     name: 'NFTMinted',
   },
@@ -1502,13 +1515,5 @@ export const verifyProofAbi = [
     type: 'error',
     inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
     name: 'OwnableUnauthorizedAccount',
-  },
-  {
-    type: 'error',
-    inputs: [
-      { name: 'value', internalType: 'uint256', type: 'uint256' },
-      { name: 'length', internalType: 'uint256', type: 'uint256' },
-    ],
-    name: 'StringsInsufficientHexLength',
   },
 ] as const
