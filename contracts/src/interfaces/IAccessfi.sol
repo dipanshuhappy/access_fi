@@ -20,7 +20,14 @@ interface IAccessFiPool {
     }
 
     function buy(address seller) view external;
-    function sell(address buyer) external;
+    function buyFromSeller(address seller) external payable;
+    // function mintNFTForSeller(address _seller, address _buyer) external;s
+    function sellerHasNFTs(address _seller) external view returns (bool);
+    function getSellerNFTCount(address _seller) external view returns (uint256);
+    function getBuyerPricePerToken(address _buyer) external view returns (uint256);
+    function approveNFTForSale(uint256 tokenId) external;
+    function approveAllNFTsForSale() external;
+    function isNFTApprovedForSale(address _seller, uint256 _tokenId) external view returns (bool);
     function enterPoolAsBuyer(uint256 _pricePerToken, uint256 _totalTokens) external;
     function exitPoolAsBuyer() external;
     function enterPoolAsSeller() external;

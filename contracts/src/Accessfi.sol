@@ -2,14 +2,14 @@
 pragma solidity ^0.8.13;
 
 import {IAccessFiPool} from "./interfaces/IAccessfi.sol";
-
+import {VerifyProof} from "./VerifyProof.sol";
 
 contract AccessFiPool is IAccessFiPool {
 
     Seller[] public sellers;
     Buyer[] public buyers;
     address public verifications;
-
+    VerifyProof public verifyProofContract;
 
     mapping(address => uint256) private sellerIndex;
     mapping(address => uint256) private buyerIndex;
@@ -20,11 +20,25 @@ contract AccessFiPool is IAccessFiPool {
     uint256 public currentPrice;
     uint256 public totalSellers;
 
+    // Events
+    event SellerSoldToBuyer(
+        address indexed seller,
+        address indexed buyer,
+        uint256 timestamp,
+        uint256 newTokenId
+    );
 
-    constructor(address _verifications) {
+    event NFTMintedForSeller(
+        address indexed seller,
+        uint256 indexed tokenId,
+        address indexed buyer,
+        uint256 timestamp
+    );
+
+    constructor(address _verifications, address _verifyProofContract) {
         verifications = _verifications;
+        verifyProofContract = VerifyProof(_verifyProofContract);
     }
-
 
     function buy(address seller) public view {
         require(isBuyer[seller], "Seller not in pool");
@@ -32,20 +46,142 @@ contract AccessFiPool is IAccessFiPool {
     }
     
 
-    function sell(address buyer) public {
-        require(isSeller[msg.sender], "Seller not in pool");
-        require(isBuyer[buyer], "Buyer not in pool");
-        require(!hasSold[msg.sender][buyer], "Seller has already sold to this buyer");
-        hasSold[msg.sender][buyer] = true;
 
-        uint256 sIdx = sellerIndex[msg.sender];
-        uint256 bIdx = buyerIndex[buyer];
+    /**
+     * @dev Function for buyers to initiate a purchase from a seller
+     * @param seller The seller's address
+     */
+    function buyFromSeller(address seller) external payable {
+        require(isBuyer[msg.sender], "Caller is not a buyer");
+        require(isSeller[seller], "Seller not in pool");
+        require(!hasSold[seller][msg.sender], "Already purchased from this seller");
+        
+        // Get buyer's price per token
+        uint256 buyerIdx = buyerIndex[msg.sender];
+        require(buyerIdx > 0, "Buyer not found");
+        uint256 pricePerToken = buyers[buyerIdx - 1].pricePerToken;
+        
+        // Check if sent amount matches the price
+        require(msg.value == pricePerToken, "Incorrect payment amount");
+        
+        // Check if seller has an NFT to sell
+        uint256 sellerTokenCount = verifyProofContract.balanceOf(seller);
+        require(sellerTokenCount > 0, "Seller doesn't have any NFTs to sell");
+        
+        // Get the first NFT token ID owned by the seller
+        uint256 tokenId = _getFirstTokenIdOfSeller(seller);
+        require(tokenId != 0, "No valid NFT found for seller");
+        
+        // Check if the NFT is approved for transfer
+        require(verifyProofContract.getApproved(tokenId) == address(this), "NFT not approved for sale. Seller must call approveNFTForSale() first");
+        
+        // Transfer the NFT from seller to buyer
+        verifyProofContract.transferFrom(seller, msg.sender, tokenId);
+        
+        // Transfer payment to seller
+        (bool success, ) = payable(seller).call{value: pricePerToken}("");
+        require(success, "Payment transfer failed");
+        
+        // Record the sale
+        hasSold[seller][msg.sender] = true;
+
+        uint256 sIdx = sellerIndex[seller];
+        uint256 bIdx = buyerIndex[msg.sender];
         if (sIdx > 0 && bIdx > 0) {
-            sellers[sIdx-1].buyers.push(buyer);
-            buyers[bIdx-1].sellers.push(msg.sender);
+            sellers[sIdx-1].buyers.push(msg.sender);
+            buyers[bIdx-1].sellers.push(seller);
+            
+            // Update amounts
+            sellers[sIdx-1].amountEarned += pricePerToken;
+            buyers[bIdx-1].amountSpent += pricePerToken;
+            buyers[bIdx-1].tokensGained += 1;
         }
 
+        // Mint a new NFT for the seller
+        _mintNFTForSeller(seller, msg.sender);
+
+        emit SellerSoldToBuyer(seller, msg.sender, block.timestamp, tokenId);
     }
+
+    /**
+     * @dev Check if a seller has NFTs available for sale
+     * @param _seller The seller's address
+     * @return True if seller has NFTs, false otherwise
+     */
+    function sellerHasNFTs(address _seller) external view returns (bool) {
+        return verifyProofContract.balanceOf(_seller) > 0;
+    }
+
+    /**
+     * @dev Get the number of NFTs owned by a seller
+     * @param _seller The seller's address
+     * @return Number of NFTs owned
+     */
+    function getSellerNFTCount(address _seller) external view returns (uint256) {
+        return verifyProofContract.balanceOf(_seller);
+    }
+
+    /**
+     * @dev Get the price per token for a specific buyer
+     * @param _buyer The buyer's address
+     * @return Price per token
+     */
+    function getBuyerPricePerToken(address _buyer) external view returns (uint256) {
+        require(isBuyer[_buyer], "Address is not a buyer");
+        uint256 buyerIdx = buyerIndex[_buyer];
+        require(buyerIdx > 0, "Buyer not found");
+        return buyers[buyerIdx - 1].pricePerToken;
+    }
+
+    /**
+     * @dev Internal function to mint NFT for seller after successful sale
+     * @param _seller The seller's address
+     * @param _buyer The buyer's address
+     */
+    function _mintNFTForSeller(address _seller, address _buyer) internal {
+        // Generate unique parameters for the NFT
+        uint256 aggregationId = uint256(keccak256(abi.encodePacked(_seller, _buyer, block.timestamp)));
+        uint256 domainId = uint256(keccak256(abi.encodePacked("accessfi_sale", block.number)));
+        
+        // Create dummy merkle path for the sale verification
+        bytes32[] memory merklePath = new bytes32[](1);
+        merklePath[0] = keccak256(abi.encodePacked(_seller, _buyer));
+        
+        bytes32 leaf = keccak256(abi.encodePacked("sale_verified", _seller, _buyer, block.timestamp));
+        
+        // Call the VerifyProof contract to mint NFT
+        // Note: This assumes the seller has already been verified through the proof system
+        // In a real implementation, you might want to verify the seller's eligibility first
+        
+        try verifyProofContract.verifyAndMint(
+            aggregationId,
+            domainId,
+            merklePath,
+            leaf,
+            1, // leafCount
+            0  // index
+        ) {
+            // Get the latest token ID (this is a simplified approach)
+            uint256 tokenId = verifyProofContract.totalSupply();
+            emit NFTMintedForSeller(_seller, tokenId, _buyer, block.timestamp);
+        } catch {
+            // If NFT minting fails, still record the sale but emit a different event
+            emit SellerSoldToBuyer(_seller, _buyer, block.timestamp, 0);
+        }
+    }
+
+    // /**
+    //  * @dev Function to manually mint NFT for a seller (for testing or special cases)
+    //  * @param _seller The seller's address
+    //  * @param _buyer The buyer's address
+    //  */
+    // function mintNFTForSeller(address _seller, address _buyer) external {
+    //     require(isSeller[_seller], "Address is not a seller");
+    //     require(isBuyer[_buyer], "Address is not a buyer");
+    //     require(hasSold[_seller][_buyer], "No sale recorded between these addresses");
+        
+    //     _mintNFTForSeller(_seller, _buyer);
+    // }
 
     function enterPoolAsBuyer(uint256 _pricePerToken, uint256 _totalTokens) public {
         require(!isBuyer[msg.sender], "Buyer already in pool");
@@ -119,7 +255,6 @@ contract AccessFiPool is IAccessFiPool {
         
         return (availableSellers, count);
     }
-
     function getAllSellers() public view returns (address[] memory) {
         address[] memory sellerAddrs = new address[](sellers.length);
         for (uint i = 0; i < sellers.length; i++) {
@@ -134,5 +269,65 @@ contract AccessFiPool is IAccessFiPool {
             buyerAddrs[i] = buyers[i].buyer;
         }
         return buyerAddrs;
+    }
+
+    /**
+     * @dev Get the first token ID owned by a seller
+     * @param _seller The seller's address
+     * @return The first token ID owned by the seller, or 0 if none found
+     */
+    function _getFirstTokenIdOfSeller(address _seller) internal view returns (uint256) {
+        uint256 totalSupply = verifyProofContract.totalSupply();
+        
+        // Check from token ID 1 to total supply
+        for (uint256 i = 1; i <= totalSupply; i++) {
+            try verifyProofContract.ownerOf(i) returns (address owner) {
+                if (owner == _seller) {
+                    return i;
+                }
+            } catch {
+                // Token doesn't exist, continue
+                continue;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * @dev Function for sellers to approve this contract to transfer their NFT
+     * @param tokenId The token ID to approve for transfer
+     */
+    function approveNFTForSale(uint256 tokenId) external {
+        require(isSeller[msg.sender], "Only sellers can approve NFTs for sale");
+        require(verifyProofContract.ownerOf(tokenId) == msg.sender, "You don't own this NFT");
+        verifyProofContract.approve(address(this), tokenId);
+    }
+
+    /**
+     * @dev Function for sellers to approve all their NFTs for sale
+     */
+    function approveAllNFTsForSale() external {
+        require(isSeller[msg.sender], "Only sellers can approve NFTs for sale");
+        uint256 totalSupply = verifyProofContract.totalSupply();
+        
+        for (uint256 i = 1; i <= totalSupply; i++) {
+            try verifyProofContract.ownerOf(i) returns (address owner) {
+                if (owner == msg.sender) {
+                    verifyProofContract.approve(address(this), i);
+                }
+            } catch {
+                continue;
+            }
+        }
+    }
+
+    /**
+     * @dev Check if a seller has approved a specific NFT for sale
+     * @param _seller The seller's address
+     * @param _tokenId The token ID to check
+     * @return True if approved, false otherwise
+     */
+    function isNFTApprovedForSale(address _seller, uint256 _tokenId) external view returns (bool) {
+        return verifyProofContract.getApproved(_tokenId) == address(this);
     }
 }
