@@ -25,13 +25,11 @@ interface IAccessFiPool {
     function sellerHasNFTs(address _seller) external view returns (bool);
     function getSellerNFTCount(address _seller) external view returns (uint256);
     function getBuyerPricePerToken(address _buyer) external view returns (uint256);
-    function approveNFTForSale(uint256 tokenId) external;
-    function approveAllNFTsForSale() external;
-    function isNFTApprovedForSale(address _seller, uint256 _tokenId) external view returns (bool);
     function enterPoolAsBuyer(uint256 _pricePerToken, uint256 _totalTokens) external;
     function exitPoolAsBuyer() external;
     function enterPoolAsSeller() external;
     function exitPoolAsSeller() external;
+    function getAvailableSellers() external view returns (address[] memory, uint256);
     function getAllSellers() external view returns (address[] memory);
     function getAllBuyers() external view returns (address[] memory);
 

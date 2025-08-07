@@ -72,8 +72,7 @@ contract AccessFiPool is IAccessFiPool {
         uint256 tokenId = _getFirstTokenIdOfSeller(seller);
         require(tokenId != 0, "No valid NFT found for seller");
         
-        // Check if the NFT is approved for transfer
-        require(verifyProofContract.getApproved(tokenId) == address(this), "NFT not approved for sale. Seller must call approveNFTForSale() first");
+        // No approval needed with our custom NFT contract
         
         // Transfer the NFT from seller to buyer
         verifyProofContract.transferFrom(seller, msg.sender, tokenId);
@@ -293,41 +292,5 @@ contract AccessFiPool is IAccessFiPool {
         return 0;
     }
 
-    /**
-     * @dev Function for sellers to approve this contract to transfer their NFT
-     * @param tokenId The token ID to approve for transfer
-     */
-    function approveNFTForSale(uint256 tokenId) external {
-        require(isSeller[msg.sender], "Only sellers can approve NFTs for sale");
-        require(verifyProofContract.ownerOf(tokenId) == msg.sender, "You don't own this NFT");
-        verifyProofContract.approve(address(this), tokenId);
-    }
 
-    /**
-     * @dev Function for sellers to approve all their NFTs for sale
-     */
-    function approveAllNFTsForSale() external {
-        require(isSeller[msg.sender], "Only sellers can approve NFTs for sale");
-        uint256 totalSupply = verifyProofContract.totalSupply();
-        
-        for (uint256 i = 1; i <= totalSupply; i++) {
-            try verifyProofContract.ownerOf(i) returns (address owner) {
-                if (owner == msg.sender) {
-                    verifyProofContract.approve(address(this), i);
-                }
-            } catch {
-                continue;
-            }
-        }
-    }
-
-    /**
-     * @dev Check if a seller has approved a specific NFT for sale
-     * @param _seller The seller's address
-     * @param _tokenId The token ID to check
-     * @return True if approved, false otherwise
-     */
-    function isNFTApprovedForSale(address _seller, uint256 _tokenId) external view returns (bool) {
-        return verifyProofContract.getApproved(_tokenId) == address(this);
-    }
 }

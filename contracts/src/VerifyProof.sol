@@ -2,11 +2,12 @@
 pragma solidity ^0.8.13;
 
 import {IVerifyProofAggregation} from "./interfaces/IVerifyProofAggregation.sol";
-import {ERC721} from "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
+import {ICustomNFT} from "./interfaces/ICustomNFT.sol";
+import {CustomNFT} from "./CustomNFT.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
-contract VerifyProof is ERC721, Ownable {
+contract VerifyProof is Ownable {
 
     bytes32 public constant PROVING_SYSTEM_ID = keccak256(abi.encodePacked("groth16"));
     bytes32 public constant VERSION_HASH = sha256(abi.encodePacked(""));
@@ -14,14 +15,11 @@ contract VerifyProof is ERC721, Ownable {
     address public zkVerify;
     bytes32 public vkey;
     
-    // Counter for total tokens minted
-    uint256 private _tokenIdCounter;
+    // Custom NFT contract
+    CustomNFT public nftContract;
     
     // Mapping to track if address has claimed
     mapping(address => bool) public hasClaimed;
-    
-    // Mapping to store token metadata
-    mapping(uint256 => string) private _tokenURIs;
 
     // Events
     event NFTMinted(
@@ -45,10 +43,12 @@ contract VerifyProof is ERC721, Ownable {
         bytes32 _vkey,
         string memory _name,
         string memory _symbol
-    ) ERC721(_name, _symbol) Ownable(msg.sender) {
+    ) Ownable(msg.sender) {
         zkVerify = _zkVerify;
         vkey = _vkey;
-        _tokenIdCounter = 0;
+        
+        // Deploy the custom NFT contract
+        nftContract = new CustomNFT(_name, _symbol);
     }
 
     /**
@@ -64,7 +64,7 @@ contract VerifyProof is ERC721, Ownable {
                     block.timestamp,
                     block.prevrandao,
                     block.number,
-                    _tokenIdCounter
+                    nftContract.getTokenIdCounter()
                 )
             )
         );
@@ -146,14 +146,6 @@ contract VerifyProof is ERC721, Ownable {
     }
 
     /**
-     * @dev Returns the token URI for a given token ID
-     */
-    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        // require(_exists(tokenId), "ERC721: URI query for nonexistent token"); 
-        return _tokenURIs[tokenId];
-    }
-
-    /**
      * @dev Verifies the proof and mints an NFT
      */
     function verifyAndMint(
@@ -177,17 +169,18 @@ contract VerifyProof is ERC721, Ownable {
         require(valid, "Invalid proof");
 
         hasClaimed[msg.sender] = true;
-        _tokenIdCounter++;
+
+        // Increment token counter
+        nftContract.incrementTokenIdCounter();
 
         // Generate unique token ID
         uint256 tokenId = _generateTokenId(msg.sender);
         
         // Create token URI
         string memory _tokenURI = _createTokenURI(tokenId, msg.sender, _aggregationId, _domainId);
-        _tokenURIs[tokenId] = _tokenURI;
 
-        // Mint the NFT
-        _mint(msg.sender, tokenId);
+        // Mint the NFT using the custom NFT contract
+        nftContract.mint(msg.sender, tokenId, _tokenURI);
 
         // Emit events
         emit ProofVerified(msg.sender, _aggregationId, _domainId, valid);
@@ -198,13 +191,55 @@ contract VerifyProof is ERC721, Ownable {
      * @dev Returns the total number of tokens minted
      */
     function totalSupply() external view returns (uint256) {
-        return _tokenIdCounter;
+        return nftContract.totalSupply();
     }
 
     /**
      * @dev Returns the current token ID counter
      */
     function getTokenIdCounter() external view returns (uint256) {
-        return _tokenIdCounter;
+        return nftContract.getTokenIdCounter();
+    }
+    
+    // Delegate NFT functions to the custom NFT contract
+    
+    function balanceOf(address owner) public view returns (uint256) {
+        return nftContract.balanceOf(owner);
+    }
+    
+    function ownerOf(uint256 tokenId) public view returns (address) {
+        return nftContract.ownerOf(tokenId);
+    }
+    
+    function tokenURI(uint256 tokenId) public view returns (string memory) {
+        return nftContract.tokenURI(tokenId);
+    }
+    
+    function transfer(address to, uint256 tokenId) public {
+        nftContract.transfer(to, tokenId);
+    }
+    
+    function transferFrom(address from, address to, uint256 tokenId) public {
+        nftContract.transferFrom(from, to, tokenId);
+    }
+    
+    function approve(address to, uint256 tokenId) public {
+        nftContract.approve(to, tokenId);
+    }
+    
+    function getApproved(uint256 tokenId) public view returns (address) {
+        return nftContract.getApproved(tokenId);
+    }
+    
+    function setApprovalForAll(address operator, bool approved) public {
+        nftContract.setApprovalForAll(operator, approved);
+    }
+    
+    function isApprovedForAll(address owner, address operator) public view returns (bool) {
+        return nftContract.isApprovedForAll(owner, operator);
+    }
+    
+    function exists(uint256 tokenId) external view returns (bool) {
+        return nftContract.exists(tokenId);
     }
 }
