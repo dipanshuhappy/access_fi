@@ -191,7 +191,7 @@ export default function HeroBanner() {
 
       {/* Content Container */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 w-full">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left Column - Text Content */}
           <motion.div
             className="text-left"
@@ -204,7 +204,7 @@ export default function HeroBanner() {
               variants={itemVariants}
             >
               <span className="bg-gradient-to-r from-primary via-chart-2 to-chart-3 bg-clip-text text-transparent">
-                Swap Data for Value
+                Swap Your Data for Value
               </span>
             </motion.h1>
 
@@ -212,9 +212,10 @@ export default function HeroBanner() {
               className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed"
               variants={itemVariants}
             >
-              Transform your digital assets through{" "}
-              <span className="text-primary font-semibold">intelligent pools</span> and{" "}
-              <span className="text-chart-2 font-semibold">automated strategies</span>
+              The human way of selling your data through{" "}
+              <span className="text-primary font-semibold">Internet Variable Markets</span>{" "}
+              where your email is worth{" "}
+              <span className="text-chart-2 font-semibold">$2.1B market cap</span>
             </motion.p>
 
             <motion.div
@@ -234,7 +235,7 @@ export default function HeroBanner() {
                 transition={{ duration: 2, repeat: Infinity }}
               >
                 <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                <span className="text-primary font-semibold">Live Trading Active</span>
+                <span className="text-primary font-semibold">Data Markets Active</span>
               </motion.div>
 
               <motion.div
@@ -243,32 +244,12 @@ export default function HeroBanner() {
                 transition={{ duration: 2, repeat: Infinity }}
               >
                 <div className="w-2 h-2 bg-chart-2 rounded-full animate-pulse" />
-                <span>Real-time swaps in progress</span>
+                <span>Real-time data swaps in progress</span>
               </motion.div>
             </motion.div>
 
-            {/* Stats */}
-            <motion.div
-              className="grid grid-cols-3 gap-4"
-              variants={containerVariants}
-            >
-              {[
-                { label: "Total Volume", value: "$24.7M", change: "+12.3%" },
-                { label: "Active Pools", value: "127", change: "+5" },
-                { label: "Avg APY", value: "18.5%", change: "+2.1%" }
-              ].map((stat, index) => (
-                <motion.div
-                  key={index}
-                  className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg p-4 text-center"
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.02 }}
-                >
-                  <div className="text-xl font-bold text-foreground">{stat.value}</div>
-                  <div className="text-xs text-muted-foreground">{stat.label}</div>
-                  <div className="text-xs text-chart-2 font-medium">{stat.change}</div>
-                </motion.div>
-              ))}
-            </motion.div>
+
+
           </motion.div>
 
           {/* Right Column - Enhanced Animations */}
@@ -282,7 +263,7 @@ export default function HeroBanner() {
             <div className="absolute inset-0 opacity-80 hidden lg:block">
               <ThreeScene />
             </div>
-            
+
             {/* Additional floating elements - Hidden on mobile */}
             <div className="absolute inset-0 pointer-events-none hidden lg:block">
               {/* Floating dollar signs */}
@@ -308,7 +289,7 @@ export default function HeroBanner() {
                   $
                 </motion.div>
               ))}
-              
+
               {/* Trading arrows */}
               {Array.from({ length: 3 }, (_, i) => (
                 <motion.div
@@ -331,7 +312,7 @@ export default function HeroBanner() {
                   →
                 </motion.div>
               ))}
-              
+
               {/* Data blocks */}
               {Array.from({ length: 4 }, (_, i) => (
                 <motion.div
@@ -353,7 +334,7 @@ export default function HeroBanner() {
                 />
               ))}
             </div>
-            
+
 
           </motion.div>
         </div>

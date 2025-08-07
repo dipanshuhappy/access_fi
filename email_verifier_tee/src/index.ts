@@ -50,7 +50,7 @@ app.get('/ping', (c) => {
   return c.text('pong')
 })
 app.get('/quote', async (c) => {
-  const a = await client.tdxQuote('life is a bitch', 'sha256')
+  const a = await client.tdxQuote('', 'raw')
 
   return c.json({ quote: a.quote })
 })
