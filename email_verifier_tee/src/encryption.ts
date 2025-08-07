@@ -12,6 +12,78 @@ import * as crypto from 'crypto'
 
 
 /**
+ * RSA Asymmetric encryption using Node.js crypto
+ */
+export class RSAAsymmetricEncryption {
+  /**
+   * Generate RSA key pair
+   * @returns Object containing public and private keys in PEM format
+   */
+  static generateKeyPair(): { publicKey: string, privateKey: string } {
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: {
+        type: 'spki',
+        format: 'pem'
+      },
+      privateKeyEncoding: {
+        type: 'pkcs8',
+        format: 'pem'
+      }
+    });
+
+    return { publicKey, privateKey };
+  }
+
+  /**
+   * Encrypt data using RSA public key
+   * @param data - The data to encrypt
+   * @param publicKey - The public key in PEM format
+   * @returns Base64 encoded encrypted data
+   */
+  static encrypt(data: string, publicKey: string): string {
+    const buffer = Buffer.from(data, 'utf8');
+    const encrypted = crypto.publicEncrypt({
+      key: publicKey,
+      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+      oaepHash: 'sha256'
+    }, buffer);
+
+    return encrypted.toString('base64');
+  }
+
+  /**
+   * Decrypt data using RSA private key
+   * @param encryptedData - Base64 encoded encrypted data
+   * @param privateKey - The private key in PEM format
+   * @returns Decrypted string
+   */
+  static decrypt(encryptedData: string, privateKey: string): string {
+    const buffer = Buffer.from(encryptedData, 'base64');
+    const decrypted = crypto.privateDecrypt({
+      key: privateKey,
+      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+      oaepHash: 'sha256'
+    }, buffer);
+
+    return decrypted.toString('utf8');
+  }
+
+  /**
+   * Extract public key from private key
+   * @param privateKey - The private key in PEM format
+   * @returns Public key in PEM format
+   */
+  static getPublicKeyFromPrivate(privateKey: string): string {
+    const keyObject = crypto.createPrivateKey(privateKey);
+    return keyObject.export({
+      type: 'spki',
+      format: 'pem'
+    }) as string;
+  }
+}
+
+/**
  * Simple encryption using viem's keccak256 and XOR
  * Works everywhere viem works - no additional dependencies
  */
@@ -106,7 +178,34 @@ export class SimpleViemEncryption {
 }
 
 /**
- * Quick usage example
+ * Quick usage example for RSA encryption
+ */
+export function quickRSAExample() {
+  console.log('=== RSA Encryption Example ===\n')
+
+  // Generate RSA key pair
+  const { publicKey, privateKey } = RSAAsymmetricEncryption.generateKeyPair()
+
+  console.log('Public Key:', publicKey.slice(0, 50) + '...')
+
+  // Encrypt a message using public key
+  const message = "Hello World! This is my secret message."
+  const encrypted = RSAAsymmetricEncryption.encrypt(message, publicKey)
+
+  console.log('Original:', message)
+  console.log('Encrypted:', encrypted.slice(0, 50) + '...')
+
+  // Decrypt the message using private key
+  const decrypted = RSAAsymmetricEncryption.decrypt(encrypted, privateKey)
+
+  console.log('Decrypted:', decrypted)
+  console.log('Success:', message === decrypted)
+
+  return { message, encrypted, decrypted, success: message === decrypted, publicKey, privateKey }
+}
+
+/**
+ * Quick usage example for Viem encryption
  */
 export function quickExample() {
   console.log('=== Quick Example ===\n')

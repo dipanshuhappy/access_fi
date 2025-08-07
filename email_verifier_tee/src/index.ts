@@ -4,7 +4,8 @@ import dotenv from 'dotenv'
 import { createPublicClient, erc721Abi, http, parseEventLogs, recoverPublicKey, zeroAddress } from 'viem'
 
 import { toViemAccount, } from '@phala/dstack-sdk/viem';
-import { quickExample, SimpleViemEncryption, } from './encryption.js';
+import { quickExample, SimpleViemEncryption, RSAAsymmetricEncryption } from './encryption.js';
+import * as crypto from 'crypto';
 dotenv.config()
 
 // import { env } from '../env.js'
@@ -35,17 +36,11 @@ const chainClient = createPublicClient({
   transport: http(),
 })
 
-function privateKeyFromDeriveKeyResponse(keyResponse: any) {
-  // Keep legacy behavior for GetTlsKeyResponse, but with warning.
-  if (keyResponse.__name__ === 'GetTlsKeyResponse') {
-    const hex = Array.from(keyResponse.asUint8Array(32)).map(b => b.toString(16).padStart(2, '0')).join('')
-    return `0x${hex}`
-  }
-  const hex = Array.from(keyResponse.key).map((b: any) => b.toString(16).padStart(2, '0')).join('')
-  return `0x${hex}`
-}
+// Generate RSA key pair from the keyResult
+const rsaKeyPair = RSAAsymmetricEncryption.generateKeyPair()
 
 const account = toViemAccount(keyResult);
+
 app.use('*', cors())
 app.get('/ping', (c) => {
   return c.text('pong')
@@ -59,10 +54,12 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 app.get('/public-key', async (c) => {
-  return c.json({ publicKey: account.address })
+  return c.json({
+    publicKey: rsaKeyPair.publicKey,
+  })
 })
 app.post('/encrypt', async (c) => {
-  const { secret, nonce, txHash } = await c.req.json<{ secret: string, nonce: string, txHash: `0x${string}` }>()
+  const { secret, txHash } = await c.req.json<{ secret: string, nonce: string, txHash: `0x${string}` }>()
   const txReceipt = await chainClient.getTransactionReceipt({
     hash: txHash
   })
@@ -73,32 +70,42 @@ app.post('/encrypt', async (c) => {
   })
   const mintLog = logs.find(log => log.args.from === zeroAddress)
   const tokenId = Number(mintLog?.args.tokenId)
-  await redis.set(tokenId.toString(), JSON.stringify({ secret, nonce }))
+  await redis.set(tokenId.toString(), JSON.stringify({ secret }))
 
   return c.json({ success: true })
 })
 app.post('/decrypt', async (c) => {
-  const { txHash, publicKey } = await c.req.json<{ txHash: `0x${string}å`, publicKey: string }>()
-  // const txReceipt = await chainClient.getTransactionReceipt({
-  //   hash: txHash
-  // })
-  // const logs = parseEventLogs({
-  //   abi: erc721Abi,
-  //   logs: txReceipt.logs,
-  //   eventName: "Transfer"
-  // })
-  // const mintLog = logs.find(log => log.args.to === zeroAddress)
-  // const tokenId = Number(mintLog?.args.tokenId)
-  // const data = await redis.get(BigInt("72665380454419391581355400232069437159262014028121481654220799702730424182663").toString()) as string
-  // const { secret, nonce } = JSON.parse(data)
-  console.log(SimpleViemEncryption.decrypt("0xd22ffad4967f2d1ce0bc2a5c6adde6accf863707dd41f878cd0e466d1fca4bf6c023f7d19f313758b9b473502cf0a7a6efc77448d915f42d9c51094d499e5feed470abfeb8033d48b8f428712f8da48198906b5ecd54fa76c258486005cb0b", "0xef751065ec7c84ebde3d536de7b23081f6ca3f771d9454b483834c47739da688", privateKeyFromDeriveKeyResponse(keyResult) as `0x${string}`), "DECRYPTION ENCRYPTION")
-  const encryptedEmail = SimpleViemEncryption.encrypt(
-    SimpleViemEncryption.decrypt("0xd22ffad4967f2d1ce0bc2a5c6adde6accf863707dd41f878cd0e466d1fca4bf6c023f7d19f313758b9b473502cf0a7a6efc77448d915f42d9c51094d499e5feed470abfeb8033d48b8f428712f8da48198906b5ecd54fa76c258486005cb0b", "0xef751065ec7c84ebde3d536de7b23081f6ca3f771d9454b483834c47739da688", privateKeyFromDeriveKeyResponse(keyResult) as `0x${string}`),
-    publicKey as `0x${string}`)
+  const { tokenId } = await c.req.json<{ tokenId: string }>()
+  const storedData = await redis.get(tokenId.toString()) as string
+  const { secret } = JSON.parse(storedData)
 
-  // await redis.del(tokenId.toString())
+  try {
+    const decryptedData = RSAAsymmetricEncryption.decrypt(secret, rsaKeyPair.privateKey)
+    return c.json({ success: true, decryptedData })
+  } catch (error) {
+    return c.json({ success: false, error: 'Failed to decrypt data' }, 400)
+  }
+})
+app.post('/test-encryption', async (c) => {
+  const { message } = await c.req.json<{ message: string }>()
 
-  return c.json({ encryptedData: encryptedEmail.encryptedData, nonce: encryptedEmail.nonce })
+  try {
+    // Encrypt the message using the public key
+    const encryptedData = RSAAsymmetricEncryption.encrypt(message, rsaKeyPair.publicKey)
+
+    // Decrypt it back to verify it works
+    const decryptedData = RSAAsymmetricEncryption.decrypt(encryptedData, rsaKeyPair.privateKey)
+
+    return c.json({
+      success: true,
+      original: message,
+      encrypted: encryptedData,
+      decrypted: decryptedData,
+      verified: message === decryptedData
+    })
+  } catch (error) {
+    return c.json({ success: false, error: 'Encryption test failed' }, 500)
+  }
 })
 app.post('/send-verification-email', async (c) => {
   const { hash, signature, email } = await c.req.json<{ hash: `0x${string}`, signature: `0x${string}`, email: string }>()
