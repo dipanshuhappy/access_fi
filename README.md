@@ -1,6 +1,9 @@
 # AccessFi 🚀
 
-DeFi liquidity pools with ZK email verification. Three parts: frontend, contracts, and TEE service.
+Idea is to create internet verifiable markets. 
+Anyone in need with any contacts can create their pool for it.  Users can come verify that they are eligible and mint their emails against money for giving their emails. 
+People will use it for getting all sorts of access from pools like "High level mangers in company" to niches like "High users of zomato". 
+Rather than searching for  shady data dealers or in the dark web for the emails of these types of users. People can simply fund the pool upfront to attract their use case of users in a ethical manner.
 
 ## Quick Setup
 
