@@ -5,6 +5,7 @@ export const env = createEnv({
   server: {
     RESEND_API: z.string(),
     PORT: z.string().default("3000"),
+    REDIS_TOKEN: z.string(),
   },
 
 
