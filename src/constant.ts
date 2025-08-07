@@ -121,34 +121,35 @@ export const ZK_EMAIL_CIRCUIT_VKEY = {
     ]
   ]
 }
-export const pools = [
-  {
-    id: '1',
-    title: 'Plain Old Emails',
-    usdcAmount: 1,
-    minAccessTokens: 1,
-    totalVolume: 0,
-    risk: 'low',
-    category: 'basic',
-    tags: ['Verify Email'],
-    isActive: true,
-    address: "0x1c1d7bf51891cBe857551795B65af53F80D91E2B",
-    timeLeft: '10d 0h'
-  },
-  {
-    id: '2',
-    title: 'Feeling proud indian ?',
-    usdcAmount: 89500,
-    minAccessTokens: 500,
-    totalStaked: 1800000,
-    risk: 'low',
-    category: 'stable',
-    tags: ['Verify Nationality', 'Stable', 'India is not for beginners'],
-    isActive: true,
-    address: "0x1c1d7bf51891cBe857551795B65af53F80D91E2B",
-    timeLeft: '12d 6h'
-  }
-];
+// Hardcoded pools commented out - now using dynamic pools from smart contract
+// export const pools = [
+//   {
+//     id: '1',
+//     title: 'Plain Old Emails',
+//     usdcAmount: 1,
+//     minAccessTokens: 1,
+//     totalVolume: 0,
+//     risk: 'low',
+//     category: 'basic',
+//     tags: ['Verify Email'],
+//     isActive: true,
+//     address: "0x1c1d7bf51891cBe857551795B65af53F80D91E2B",
+//     timeLeft: '10d 0h'
+//   },
+//   {
+//     id: '2',
+//     title: 'Feeling proud indian ?',
+//     usdcAmount: 89500,
+//     minAccessTokens: 500,
+//     totalStaked: 1800000,
+//     risk: 'low',
+//     category: 'stable',
+//     tags: ['Verify Nationality', 'Stable', 'India is not for beginners'],
+//     isActive: true,
+//     address: "0x1c1d7bf51891cBe857551795B65af53F80D91E2B",
+//     timeLeft: '12d 6h'
+//   }
+// ];
 export const poolsToVerifications = {
   "0x1c1d7bf51891cbe857551795b65af53f80d91e2b": {
     "email-zk-email-with-tee": {

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
@@ -11,6 +12,8 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Checkbox } from '~/components/ui/checkbox'
 import { ArrowLeft, Sparkles, Plus, Shield, Zap, TrendingUp, Users } from 'lucide-react'
+import { factoryAccessfiAbi } from '~/generated'
+import { FACTORY_ACCESSFI_ADDRESS, EMAIL_NFT, VERIFY_PROOF } from '~/constant'
 
 interface CreatePoolFormData {
   poolName: string
@@ -59,7 +62,7 @@ const predefinedProofs = [
 export default function CreatePoolPage() {
   const router = useRouter()
   const { isConnected } = useAccount()
-
+  
   const [formData, setFormData] = useState<CreatePoolFormData>({
     poolName: '',
     selectedProofs: [],
@@ -69,6 +72,14 @@ export default function CreatePoolPage() {
     minAccessTokens: '',
     apy: '',
     duration: ''
+  })
+  
+  const [isCreating, setIsCreating] = useState(false)
+  
+  const { writeContract, data: hash, error, isPending } = useWriteContract()
+  
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
   })
 
   const handleProofToggle = (proofName: string, checked: boolean) => {
@@ -85,12 +96,115 @@ export default function CreatePoolPage() {
     }
   }
 
-  const handleCreatePool = () => {
-    console.log('Creating pool:', formData)
-    // Here you would integrate with your smart contract to create the pool
-    // For now, redirect back to pools page
-    router.push('/')
+  const handleCreatePool = async () => {
+    try {
+      // Pre-flight checks
+      if (!isConnected) {
+        toast.error('Please connect your wallet first')
+        return
+      }
+      
+      if (!isFormValid) {
+        toast.error('Please fill in all required fields')
+        return
+      }
+      
+      setIsCreating(true)
+      
+      console.log('🚀 Starting pool creation process...')
+      console.log('📝 Pool details:', {
+        name: formData.poolName,
+        size: formData.poolSize,
+        minTokens: formData.minAccessTokens,
+        apy: formData.apy,
+        duration: formData.duration,
+        proofs: formData.useCustomProof ? [formData.customProof] : formData.selectedProofs
+      })
+      
+      console.log('🔗 Contract addresses:', {
+        factory: FACTORY_ACCESSFI_ADDRESS,
+        verifyProof: VERIFY_PROOF,
+        emailNFT: EMAIL_NFT
+      })
+      
+      // Validate contract addresses
+      if (!FACTORY_ACCESSFI_ADDRESS || !VERIFY_PROOF || !EMAIL_NFT) {
+        throw new Error('Missing contract addresses. Please check your configuration.')
+      }
+      
+      toast.loading('Creating pool...', { 
+        description: 'Please confirm the transaction in your wallet'
+      })
+      
+      writeContract({
+        address: FACTORY_ACCESSFI_ADDRESS,
+        abi: factoryAccessfiAbi,
+        functionName: 'createPool',
+        args: [VERIFY_PROOF, EMAIL_NFT]
+      })
+      
+    } catch (error) {
+      console.error('❌ Error creating pool:', error)
+      toast.dismiss()
+      toast.error('Failed to create pool', { 
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+      setIsCreating(false)
+    }
   }
+  
+  // Handle transaction confirmation
+  useEffect(() => {
+    if (isConfirmed && isCreating && hash) {
+      console.log('✅ Pool created successfully!')
+      console.log('📄 Transaction hash:', hash)
+      
+      // Store pool data in localStorage with transaction hash as reference
+      const poolData = {
+        name: formData.poolName,
+        size: formData.poolSize,
+        minAccessTokens: formData.minAccessTokens,
+        apy: formData.apy,
+        duration: formData.duration,
+        proofs: formData.useCustomProof ? [formData.customProof] : formData.selectedProofs,
+        customProof: formData.useCustomProof,
+        txHash: hash,
+        createdAt: new Date().toISOString(),
+        // Add a timestamp for ordering
+        timestamp: Date.now()
+      }
+      
+      // Get existing pool data
+      const existingPools = JSON.parse(localStorage.getItem('createdPools') || '[]')
+      existingPools.push(poolData)
+      localStorage.setItem('createdPools', JSON.stringify(existingPools))
+      
+      console.log('💾 Pool data saved to localStorage:', poolData)
+      
+      toast.dismiss()
+      toast.success('Pool created successfully!', { 
+        description: `Pool "${formData.poolName}" has been deployed`
+      })
+      setIsCreating(false)
+      
+      // Redirect after a short delay to let user see the success message
+      setTimeout(() => {
+        router.push('/')
+      }, 2000)
+    }
+  }, [isConfirmed, isCreating, hash, formData, router])
+  
+  // Handle transaction errors
+  useEffect(() => {
+    if (error && isCreating) {
+      console.error('❌ Transaction error:', error)
+      toast.dismiss()
+      toast.error('Transaction failed', { 
+        description: error.message 
+      })
+      setIsCreating(false)
+    }
+  }, [error, isCreating])
 
   const isFormValid = formData.poolName &&
     formData.poolSize &&
@@ -357,11 +471,11 @@ export default function CreatePoolPage() {
                     </Button>
                     <Button
                       onClick={handleCreatePool}
-                      disabled={!isFormValid}
+                      disabled={!isFormValid || isCreating || isPending || isConfirming}
                       className="px-8 py-3 bg-gradient-to-r from-primary to-chart-2 hover:from-primary/90 hover:to-chart-2/90"
                     >
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Create Pool
+                      {isCreating || isPending ? 'Creating Pool...' : isConfirming ? 'Confirming...' : 'Create Pool'}
                     </Button>
                   </div>
                 </div>

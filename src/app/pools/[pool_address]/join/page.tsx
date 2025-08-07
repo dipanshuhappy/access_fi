@@ -15,7 +15,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { ArrowLeft, Upload, Shield, CheckCircle, AlertCircle, Loader2, Mail, FileKey, Eye, EyeOff, ChevronRight, ChevronLeft } from 'lucide-react'
 import { VERIFY_PROOF, ZK_EMAIL_CIRCUIT_VKEY } from "src/constant"
-import { pools, poolsToVerifications } from '~/constant'
+import { poolsToVerifications } from '~/constant'
 import { teeApi } from '~/lib/teeApi'
 import { SimpleViemEncryption } from '~/lib/encryption'
 import { zkVerifyClient } from '~/lib/zkVerifyClient'
@@ -51,8 +51,15 @@ export default function JoinPoolPage() {
   const { signMessageAsync } = useSignMessage()
   const poolAddress = params['pool_address'] as string
 
-  // Find the pool by address from the pools constant
-  const pool = pools.filter((p) => p.address.toLowerCase() === poolAddress?.toLowerCase())[0];
+  // Create a fallback pool object since we're now using dynamic pools
+  const pool = {
+    id: '1',
+    title: 'Dynamic Pool',
+    address: poolAddress,
+    tags: ['Email Verification', 'ZK Proof'],
+    risk: 'low' as const,
+    minAccessTokens: 100
+  };
 
   // Get verification data for this pool
   const poolVerifications = poolsToVerifications[poolAddress?.toLowerCase() as keyof typeof poolsToVerifications];
