@@ -26,7 +26,7 @@ interface ICustomNFT {
     function isApprovedForAll(address owner, address operator) external view returns (bool);
     
     // Minting function (internal but exposed for contract use)
-    function mint(address to, uint256 tokenId, string memory tokenURI) external;
+    function mint(address to, uint256 tokenId) external;
     
     // Utility functions
     function totalSupply() external view returns (uint256);

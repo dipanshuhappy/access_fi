@@ -69,7 +69,10 @@ contract AccessFiPool is IAccessFiPool {
         require(sellerTokenCount > 0, "Seller doesn't have any NFTs to sell");
         
         // Get the first NFT token ID owned by the seller
-        uint256 tokenId = _getFirstTokenIdOfSeller(seller);
+        // uint256 tokenId = _getFirstTokenIdOfSeller(seller);
+        // require(tokenId != 0, "No valid NFT found for seller");
+
+        uint256 tokenId = verifyProofContract.sellerTokenId(seller);
         require(tokenId != 0, "No valid NFT found for seller");
         
         // No approval needed with our custom NFT contract
@@ -97,7 +100,8 @@ contract AccessFiPool is IAccessFiPool {
         }
 
         // Mint a new NFT for the seller
-        _mintNFTForSeller(seller, msg.sender);
+        // _mintNFTForSeller(seller, msg.sender);
+        verifyProofContract.mintForPool(seller);
 
         emit SellerSoldToBuyer(seller, msg.sender, block.timestamp, tokenId);
     }
@@ -132,42 +136,46 @@ contract AccessFiPool is IAccessFiPool {
         return buyers[buyerIdx - 1].pricePerToken;
     }
 
-    /**
-     * @dev Internal function to mint NFT for seller after successful sale
-     * @param _seller The seller's address
-     * @param _buyer The buyer's address
-     */
-    function _mintNFTForSeller(address _seller, address _buyer) internal {
-        // Generate unique parameters for the NFT
-        uint256 aggregationId = uint256(keccak256(abi.encodePacked(_seller, _buyer, block.timestamp)));
-        uint256 domainId = uint256(keccak256(abi.encodePacked("accessfi_sale", block.number)));
+    // /**
+    //  * @dev Internal function to mint NFT for seller after successful sale
+    //  * @param _seller The seller's address
+    //  * @param _buyer The buyer's address
+    //  */
+    // function _mintNFTForSeller(address _seller, address _buyer) internal {
+    //     // Generate unique parameters for the NFT
+    //     uint256 aggregationId = uint256(keccak256(abi.encodePacked(_seller, _buyer, block.timestamp)));
+    //     uint256 domainId = uint256(keccak256(abi.encodePacked("accessfi_sale", block.number)));
         
-        // Create dummy merkle path for the sale verification
-        bytes32[] memory merklePath = new bytes32[](1);
-        merklePath[0] = keccak256(abi.encodePacked(_seller, _buyer));
+    //     // Create dummy merkle path for the sale verification
+    //     bytes32[] memory merklePath = new bytes32[](1);
+    //     merklePath[0] = keccak256(abi.encodePacked(_seller, _buyer));
         
-        bytes32 leaf = keccak256(abi.encodePacked("sale_verified", _seller, _buyer, block.timestamp));
+    //     bytes32 leaf = keccak256(abi.encodePacked("sale_verified", _seller, _buyer, block.timestamp));
         
-        // Call the VerifyProof contract to mint NFT
-        // Note: This assumes the seller has already been verified through the proof system
-        // In a real implementation, you might want to verify the seller's eligibility first
+    //     // Call the VerifyProof contract to mint NFT
+    //     // Note: This assumes the seller has already been verified through the proof system
+    //     // In a real implementation, you might want to verify the seller's eligibility first
+    //     // uint256 tokenId = uint256(verifyProofContract.counter);
+    //     // verifyProofContract.counter++;
+
+    //     verifyProofContract.mintForPool();
         
-        try verifyProofContract.verifyAndMint(
-            aggregationId,
-            domainId,
-            merklePath,
-            leaf,
-            1, // leafCount
-            0  // index
-        ) {
-            // Get the latest token ID (this is a simplified approach)
-            uint256 tokenId = verifyProofContract.totalSupply();
-            emit NFTMintedForSeller(_seller, tokenId, _buyer, block.timestamp);
-        } catch {
-            // If NFT minting fails, still record the sale but emit a different event
-            emit SellerSoldToBuyer(_seller, _buyer, block.timestamp, 0);
-        }
-    }
+    //     try verifyProofContract.verifyAndMint(
+    //         aggregationId,
+    //         domainId,
+    //         merklePath,
+    //         leaf,
+    //         1, // leafCount
+    //         0  // index
+    //     ) {
+    //         // Get the latest token ID (this is a simplified approach)
+    //         uint256 tokenId = verifyProofContract.totalSupply();
+    //         emit NFTMintedForSeller(_seller, tokenId, _buyer, block.timestamp);
+    //     } catch {
+    //         // If NFT minting fails, still record the sale but emit a different event
+    //         emit SellerSoldToBuyer(_seller, _buyer, block.timestamp, 0);
+    //     }
+    // }
 
     // /**
     //  * @dev Function to manually mint NFT for a seller (for testing or special cases)
@@ -277,22 +285,22 @@ contract AccessFiPool is IAccessFiPool {
      * @param _seller The seller's address
      * @return The first token ID owned by the seller, or 0 if none found
      */
-    function _getFirstTokenIdOfSeller(address _seller) internal view returns (uint256) {
-        uint256 totalSupply = verifyProofContract.totalSupply();
+    // function _getFirstTokenIdOfSeller(address _seller) internal view returns (uint256) {
+    //     uint256 totalSupply = verifyProofContract.totalSupply();
         
-        // Check from token ID 1 to total supply
-        for (uint256 i = 1; i <= totalSupply; i++) {
-            try verifyProofContract.ownerOf(i) returns (address owner) {
-                if (owner == _seller) {
-                    return i;
-                }
-            } catch {
-                // Token doesn't exist, continue
-                continue;
-            }
-        }
-        return 0;
-    }
+    //     // Check from token ID 1 to total supply
+    //     for (uint256 i = 1; i <= totalSupply; i++) {
+    //         try verifyProofContract.ownerOf(i) returns (address owner) {
+    //             if (owner == _seller) {
+    //                 return i;
+    //             }
+    //         } catch {
+    //             // Token doesn't exist, continue
+    //             continue;
+    //         }
+    //     }
+    //     return 0;
+    // }
 
 
 }

@@ -20,6 +20,8 @@ contract VerifyProof is Ownable {
     
     // Mapping to track if address has claimed
     mapping(address => bool) public hasClaimed;
+    mapping(address => uint256) public sellerTokenId;
+    uint256 public counter;
 
     // Events
     event NFTMinted(
@@ -27,8 +29,7 @@ contract VerifyProof is Ownable {
         address indexed owner,
         uint256 aggregationId,
         uint256 domainId,
-        uint256 timestamp,
-        string tokenURI
+        uint256 timestamp
     );
 
     event ProofVerified(
@@ -58,15 +59,7 @@ contract VerifyProof is Ownable {
      */
     function _generateTokenId(address _sender) internal view returns (uint256) {
         return uint256(
-            keccak256(
-                abi.encodePacked(
-                    _sender,
-                    block.timestamp,
-                    block.prevrandao,
-                    block.number,
-                    nftContract.getTokenIdCounter()
-                )
-            )
+            nftContract.getTokenIdCounter() + 1
         );
     }
 
@@ -78,33 +71,33 @@ contract VerifyProof is Ownable {
      * @param _domainId The domain ID from the proof
      * @return The token URI string
      */
-    function _createTokenURI(
-        uint256 _tokenId,
-        address _owner,
-        uint256 _aggregationId,
-        uint256 _domainId
-    ) internal view returns (string memory) {
-        return string(
-            abi.encodePacked(
-                "data:application/json;base64,",
-                _base64Encode(
-                    abi.encodePacked(
-                        '{"name":"Proof Verification NFT #',
-                        Strings.toString(_tokenId),
-                        '","description":"NFT minted for successful zero-knowledge proof verification","attributes":[{"trait_type":"Aggregation ID","value":"',
-                        Strings.toString(_aggregationId),
-                        '"},{"trait_type":"Domain ID","value":"',
-                        Strings.toString(_domainId),
-                        '"},{"trait_type":"Owner","value":"',
-                        Strings.toHexString(uint160(_owner)),
-                        '"},{"trait_type":"Mint Timestamp","value":"',
-                        Strings.toString(block.timestamp),
-                        '"}]}'
-                    )
-                )
-            )
-        );
-    }
+    // function _createTokenURI(
+    //     uint256 _tokenId,
+    //     address _owner,
+    //     uint256 _aggregationId,
+    //     uint256 _domainId
+    // ) internal view returns (string memory) {
+    //     return string(
+    //         abi.encodePacked(
+    //             "data:application/json;base64,",
+    //             _base64Encode(
+    //                 abi.encodePacked(
+    //                     '{"name":"Proof Verification NFT #',
+    //                     Strings.toString(_tokenId),
+    //                     '","description":"NFT minted for successful zero-knowledge proof verification","attributes":[{"trait_type":"Aggregation ID","value":"',
+    //                     Strings.toString(_aggregationId),
+    //                     '"},{"trait_type":"Domain ID","value":"',
+    //                     Strings.toString(_domainId),
+    //                     '"},{"trait_type":"Owner","value":"',
+    //                     Strings.toHexString(uint160(_owner)),
+    //                     '"},{"trait_type":"Mint Timestamp","value":"',
+    //                     Strings.toString(block.timestamp),
+    //                     '"}]}'
+    //                 )
+    //             )
+    //         )
+    //     );
+    // }
 
     /**
      * @dev Simple base64 encoding function
@@ -171,20 +164,23 @@ contract VerifyProof is Ownable {
         hasClaimed[msg.sender] = true;
 
         // Increment token counter
-        nftContract.incrementTokenIdCounter();
+        // nftContract.incrementTokenIdCounter();
 
         // Generate unique token ID
-        uint256 tokenId = _generateTokenId(msg.sender);
+        uint256 tokenId = counter;
+        counter += 1;
         
         // Create token URI
-        string memory _tokenURI = _createTokenURI(tokenId, msg.sender, _aggregationId, _domainId);
+        // string memory _tokenURI = _createTokenURI(tokenId, msg.sender, _aggregationId, _domainId);
 
         // Mint the NFT using the custom NFT contract
-        nftContract.mint(msg.sender, tokenId, _tokenURI);
+        nftContract.mint(msg.sender, tokenId);
+        sellerTokenId[msg.sender] = tokenId;
+
 
         // Emit events
         emit ProofVerified(msg.sender, _aggregationId, _domainId, valid);
-        emit NFTMinted(tokenId, msg.sender, _aggregationId, _domainId, block.timestamp, _tokenURI);
+        emit NFTMinted(tokenId, msg.sender, _aggregationId, _domainId, block.timestamp);
     }
 
     /**
@@ -241,5 +237,19 @@ contract VerifyProof is Ownable {
     
     function exists(uint256 tokenId) external view returns (bool) {
         return nftContract.exists(tokenId);
+    }
+
+    function getCounter() external view returns (uint256) {
+        return counter;
+    }
+
+    function mintForPool(address _seller) public returns(uint256){
+        uint256 tokenId = counter;
+        counter += 1;
+
+        nftContract.mint(_seller, tokenId);
+        sellerTokenId[_seller] = tokenId;
+
+        return tokenId;
     }
 }
